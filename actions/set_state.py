@@ -4,21 +4,12 @@ from src.backend.DeckManagement.DeckController import DeckController  # noqa
 from src.backend.PageManagement.Page import Page  # noqa
 from src.backend.PluginManager.PluginBase import PluginBase  # noqa
 
-from dataclasses import dataclass
 from loguru import logger as log
-from uuid import uuid4
-from PIL import ImageFile
 from ..messages import (
-    StateEventsResponse,
-    ListStateEventsRequest,
-    ListStateEventsResponse,
     SetActiveStateRequest,
-    PeekRequest,
-    PeekResponse,
-    ThumbnailRequest,
-    ThumbnailResponse,
 )
-from ..utils import get_image_from_b64
+from ..model import VeadoState
+from ..utils import Observer
 
 # Import gtk modules - used for the config rows
 import gi
@@ -28,88 +19,52 @@ gi.require_version("Adw", "1")
 from gi.repository import Gtk, Adw  # noqa: E402, F401
 
 
-@dataclass
-class ActionState:
-    state_id: str | None = None
-    is_active: bool = False
-    image_hash: str | None = None
-    image: ImageFile.ImageFile | None = None
-
-
 BG_ACTIVE = [111, 202, 28, 255]
 BG_INACTIVE = [68, 100, 38, 255]
-BG_UNKNOWN = [0, 0, 0, 255]
+BG_UNKNOWN = [71, 0, 14, 255]
 
 
-class SetState(ActionBase):
+class SetState(Observer, ActionBase):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.subscriber_id = str(uuid4())
-        self.vsc_state = None
-        self.plugin_base.subscribe(self.subscriber_id, self.callback)
 
     def on_key_down(self):
-        if not self.vsc_state.image_hash:
-            log.warning(
-                "Received keypress to set Veado state, but our own state is incomplete. Ignoring."
-            )
-            return
-        self.plugin_base.send_request(SetActiveStateRequest(self.vsc_state.state_id))
-        # self.plugin_base.send_request(PeekRequest())
+        self.plugin_base.send_request(SetActiveStateRequest(self.state_id))
 
-    def callback(self, event: StateEventsResponse):
-        if self.vsc_state is None:
-            self.vsc_state = ActionState(state_id=self.get_settings().get("state_id"))
-
-        log.debug(f"Action received {event=}")
-        if isinstance(event, ListStateEventsResponse):
-            log.debug(f"Our {self.vsc_state.state_id=}")
-            log.debug(f"Incoming state IDs: {list(x['id'] for x in event.states)}")
-            our_state = next(
-                (x for x in event.states if x["id"] == self.vsc_state.state_id), None
-            )
-            if not our_state:
-                return
-
-            log.debug(f"{self.vsc_state.image_hash=} ?= {our_state['thumbHash']=}")
-            if our_state["thumbHash"] != self.vsc_state.image_hash:
-                self.plugin_base.send_request(ThumbnailRequest(self.vsc_state.state_id))
-        elif isinstance(event, PeekResponse):
-            new_is_active = event.current_state == self.vsc_state.state_id
-            if self.vsc_state.is_active != new_is_active:
-                self.vsc_state.is_active = new_is_active
-                self.render()
-        elif isinstance(event, ThumbnailResponse):
-            if event.state_id != self.vsc_state.state_id:
-                return
-            self.vsc_state.image_hash = event.hash
-            self.vsc_state.image = get_image_from_b64(event.png_b64_str)
-            self.render()
+    def update(self):
+        self.render()
 
     def on_ready(self):
-        self.vsc_state = ActionState(state_id=self.get_settings().get("state_id"))
-        self.plugin_base.send_request(ListStateEventsRequest())
-        self.plugin_base.send_request(PeekRequest())
+        self.plugin_base.model.subscribe(self)
+        self.state_id = self.get_settings().get("state_id")
         self.render(force=True)
 
-    def render(self, force: bool = False):
+    def on_remove(self):
+        self.plugin_base.model.unsubscribe(self)
 
+    def render(self, force: bool = False):
         if not self.on_ready_called and not force:
             return
 
-        self.set_bottom_label(self.vsc_state.state_id, update=False)
+        state: VeadoState = self.plugin_base.model.states.get(self.state_id)
 
-        if self.vsc_state.image:
-            self.set_media(image=self.vsc_state.image, size=0.75, update=False)
+        if state is None:
+            self.set_bottom_label(self.state_id, update=False)
+            self.set_media(image=None, update=False)
+            self.set_background_color(BG_UNKNOWN)
+        else:
+            self.set_bottom_label(state.state_id, update=False)
 
-        log.debug(f"{self.vsc_state.state_id}: {self.vsc_state.is_active=}")
-        match self.vsc_state.is_active:
-            case True:
-                self.set_background_color(BG_ACTIVE, update=False)
-            case False:
-                self.set_background_color(BG_INACTIVE, update=False)
-            case None:
-                self.set_background_color(BG_UNKNOWN, update=False)
+            if state.thumbnail:
+                self.set_media(image=state.thumbnail, size=0.75, update=False)
+
+            match state.is_active:
+                case True:
+                    self.set_background_color(BG_ACTIVE, update=False)
+                case False:
+                    self.set_background_color(BG_INACTIVE, update=False)
+                case None:
+                    self.set_background_color(BG_UNKNOWN, update=False)
 
         self.get_input().update()
 
@@ -160,7 +115,6 @@ class SetState(ActionBase):
         settings["state_id"] = new_state_id
         self.set_settings(settings)
 
-        if self.vsc_state.state_id != new_state_id:
-            # Clear state, list all states
-            self.vsc_state = ActionState(state_id=new_state_id)
-            self.plugin_base.send_request(ListStateEventsRequest())
+        if self.state_id != new_state_id:
+            self.state_id = new_state_id
+            self.render()

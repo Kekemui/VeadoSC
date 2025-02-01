@@ -6,18 +6,16 @@ from websockets.sync import client
 import threading
 
 from .messages import Request, response_factory, SubscribeStateEventsRequest
+from .utils import Subject
 
 
-class VeadoController:
+class VeadoController(Subject):
     def __init__(self, plugin_base):
+        super().__init__()
         self.frontend = plugin_base
-        self.callback = None
         self.ws = None
 
         self.start_ws_thread()
-
-    def set_callback(self, f):
-        self.callback = f
 
     def start_ws_thread(self):
         self.listening = True
@@ -48,13 +46,10 @@ class VeadoController:
             self.ws = None
 
     def on_recv(self, message):
-        log.debug(f"Received {message=}")
         event = response_factory(message)
-        log.debug(f"{event=}")
-        log.debug(f"{self.callback=}")
-        if event and self.callback:
-            self.callback(event)
-        
+        log.info(f"Received event {type(event)}")
+        if event:
+            self.notify(event=event)
 
     # Untested / unexercised
     def restart(self):
@@ -66,8 +61,7 @@ class VeadoController:
 
     def send_request(self, request: Request):
         if not self.ws:
-            log.info('Received request to publish with no active connection, ignoring')
+            log.info("Received request to publish with no active connection, ignoring")
             return
         reqstr = request.to_request_string()
-        log.debug(f"Sending {reqstr=}")
         self.ws.send(reqstr)

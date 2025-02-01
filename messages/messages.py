@@ -3,7 +3,7 @@ import json
 from abc import ABC, abstractmethod
 from typing import Any
 
-from loguru import logger as log
+from loguru import logger as log  # noqa: F401
 
 
 class VeadoBase(ABC):
@@ -90,6 +90,13 @@ class ListStateEventsRequest(StateEventsRequest):
         return super()._get_request_payload({"event": "list"})
 
 
+class StateDetail:
+    def __init__(self, state: dict[str, str]):
+        self.state_id = state["id"]
+        self.state_name = state["name"]
+        self.thumb_hash = state["thumbHash"]
+
+
 class ListStateEventsResponse(StateEventsResponse):
     @classmethod
     def message_is_valid(cls, data: dict[str, Any]) -> bool:
@@ -104,6 +111,9 @@ class ListStateEventsResponse(StateEventsResponse):
     def __init__(self, payload):
         unwrapped = super()._unwrap_response(payload)
         self.states = unwrapped["states"]
+        self.state_details: list[StateDetail] = []
+        for state in unwrapped["states"]:
+            self.state_details.append(StateDetail(state))
 
 
 class PeekRequest(StateEventsRequest):

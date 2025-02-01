@@ -5,6 +5,7 @@ from src.backend.PluginManager.ActionHolder import ActionHolder
 # Import actions
 from .actions import SetState
 from .messages import Request, StateEventsResponse
+from .model import VeadoModel
 from .veado_controller import VeadoController
 
 # import os
@@ -20,7 +21,8 @@ class VeadoSC(PluginBase):
         # Internal data
         self.subscribers: dict[str, callable] = {}
         self.controller = VeadoController(self)
-        self.controller.set_callback(self.update_callback)
+
+        self.model: VeadoModel = VeadoModel(self.controller)
 
         self.set_action_holder = ActionHolder(
             plugin_base=self,
@@ -45,9 +47,3 @@ class VeadoSC(PluginBase):
 
     def send_request(self, request: Request):
         self.controller.send_request(request)
-
-    def subscribe(self, callback_id: str, callback: callable):
-        self.subscribers[callback_id] = callback
-
-    def unsubscribe(self, callback_id: str):
-        del self.subscribers[callback_id]

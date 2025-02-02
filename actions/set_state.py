@@ -8,7 +8,7 @@ from loguru import logger as log
 from ..messages import (
     SetActiveStateRequest,
 )
-from ..model import VeadoState
+from ..model import VeadoModel
 from ..utils import Observer
 
 # Import gtk modules - used for the config rows
@@ -19,14 +19,10 @@ gi.require_version("Adw", "1")
 from gi.repository import Gtk, Adw  # noqa: E402, F401
 
 
-BG_ACTIVE = [111, 202, 28, 255]
-BG_INACTIVE = [68, 100, 38, 255]
-BG_UNKNOWN = [71, 0, 14, 255]
-
-
 class SetState(Observer, ActionBase):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.model: VeadoModel = self.plugin_base.model
 
     def on_key_down(self):
         success = self.plugin_base.send_request(SetActiveStateRequest(self.state_id))
@@ -38,36 +34,24 @@ class SetState(Observer, ActionBase):
         self.render()
 
     def on_ready(self):
-        self.plugin_base.model.subscribe(self)
+        self.model.subscribe(self)
         self.state_id = self.get_settings().get("state_id")
         self.render(force=True)
 
     def on_remove(self):
-        self.plugin_base.model.unsubscribe(self)
+        self.model.unsubscribe(self)
 
     def render(self, force: bool = False):
         if not self.on_ready_called and not force:
             return
 
-        state: VeadoState = self.plugin_base.model.states.get(self.state_id)
-
-        if state is None:
-            self.set_bottom_label(self.state_id, update=False)
-            self.set_media(image=None, update=False)
-            self.set_background_color(BG_UNKNOWN)
-        else:
-            self.set_bottom_label(state.state_id, update=False)
-
-            if state.thumbnail:
-                self.set_media(image=state.thumbnail, size=0.75, update=False)
-
-            match state.is_active:
-                case True:
-                    self.set_background_color(BG_ACTIVE, update=False)
-                case False:
-                    self.set_background_color(BG_INACTIVE, update=False)
-                case None:
-                    self.set_background_color(BG_UNKNOWN, update=False)
+        self.set_media(
+            image=self.model.get_image_for_state(self.state_id), size=0.75, update=False
+        )
+        self.set_background_color(
+            self.model.get_color_for_state(self.state_id), update=False
+        )
+        self.set_bottom_label(self.state_id, update=False)
 
         self.get_input().update()
 

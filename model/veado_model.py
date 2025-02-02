@@ -1,5 +1,8 @@
 from collections import defaultdict
+import os
+
 from loguru import logger as log
+from PIL.ImageFile import ImageFile
 
 from ..messages import (
     ListStateEventsRequest,
@@ -10,18 +13,29 @@ from ..messages import (
     ThumbnailRequest,
     ThumbnailResponse,
 )
-from ..utils import Observer, Subject, get_image_from_b64
+from ..utils import Observer, Subject, get_image_from_b64, get_image_from_path
 from ..veado_controller import ControllerConnectedEvent, VeadoController
 from .types import VeadoState
 
+BG_ACTIVE = [111, 202, 28, 255]
+BG_INACTIVE = [68, 100, 38, 255]
+BG_ERROR = [71, 0, 14, 255]
+
 
 class VeadoModel(Subject, Observer):
-    def __init__(self, controller: VeadoController):
+    def __init__(self, controller: VeadoController, base_path: str):
         super().__init__()
         self.states: dict[str, VeadoState] = defaultdict(lambda: VeadoState())
         self.active_state: str = ""
 
         self.controller: VeadoController = controller
+
+        self.disconnected_image = get_image_from_path(
+            os.path.join(base_path, "assets", "ix-icons", "disconnected.png")
+        )
+        self.not_found_image = get_image_from_path(
+            os.path.join(base_path, "assets", "ix-icons", "missing-symbol.png")
+        )
 
         self.update_map = {
             ListStateEventsResponse: self._list_update,
@@ -42,6 +56,24 @@ class VeadoModel(Subject, Observer):
     def bootstrap(self):
         self.controller.send_request(ListStateEventsRequest())
         self.controller.send_request(PeekRequest())
+
+    def get_color_for_state(self, state_id: str) -> list[int]:
+        if not self.connected or state_id not in self.states:
+            return BG_ERROR
+        elif state_id == self.active_state:
+            return BG_ACTIVE
+        else:
+            return BG_INACTIVE
+
+    def get_image_for_state(self, state_id: str) -> ImageFile:
+        if not self.connected:
+            return self.disconnected_image
+
+        state = self.states.get(state_id)
+        if state and state.thumbnail:
+            return state.thumbnail
+        else:
+            return self.not_found_image
 
     def _list_update(self, event: ListStateEventsResponse):
         current_keys = set(self.states.keys())

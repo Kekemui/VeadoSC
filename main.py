@@ -22,7 +22,7 @@ class VeadoSC(PluginBase):
         self.subscribers: dict[str, callable] = {}
         self.controller = VeadoController(self)
 
-        self.model: VeadoModel = VeadoModel(self.controller)
+        self.model: VeadoModel = VeadoModel(self.controller, self.PATH)
 
         self.set_action_holder = ActionHolder(
             plugin_base=self,

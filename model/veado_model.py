@@ -11,7 +11,7 @@ from ..messages import (
     ThumbnailResponse,
 )
 from ..utils import Observer, Subject, get_image_from_b64
-from ..veado_controller import VeadoController
+from ..veado_controller import ControllerConnectedEvent, VeadoController
 from .types import VeadoState
 
 
@@ -20,7 +20,6 @@ class VeadoModel(Subject, Observer):
         super().__init__()
         self.states: dict[str, VeadoState] = defaultdict(lambda: VeadoState())
         self.active_state: str = ""
-        self.connected: bool = False  # Unused
 
         self.controller: VeadoController = controller
 
@@ -28,9 +27,11 @@ class VeadoModel(Subject, Observer):
             ListStateEventsResponse: self._list_update,
             PeekResponse: self._peek_update,
             ThumbnailResponse: self._thumb_update,
+            ControllerConnectedEvent: self._connected_update,
         }
 
         self.controller.subscribe(self)
+        self.connected: bool = controller.is_connected()
         # Bootstrap our model
         self.controller.send_request(ListStateEventsRequest())
         self.controller.send_request(PeekRequest())
@@ -69,7 +70,9 @@ class VeadoModel(Subject, Observer):
         state.state_id = event.state_id
         state.thumb_hash = event.hash
         state.thumbnail = get_image_from_b64(event.png_b64_str)
-        pass
+
+    def _connected_update(self, event: ControllerConnectedEvent):
+        self.connected = event.is_connected
 
     def _default_update(self, event: StateEventsResponse):
         log.warn(

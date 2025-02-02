@@ -1,12 +1,17 @@
-from loguru import logger as log
-from time import sleep
+from dataclasses import dataclass
+import threading
 
+from loguru import logger as log
 from websockets.exceptions import InvalidURI, InvalidHandshake, ConnectionClosed
 from websockets.sync import client
-import threading
 
 from .messages import Request, response_factory, SubscribeStateEventsRequest
 from .utils import Subject
+
+
+@dataclass
+class ControllerConnectedEvent:
+    is_connected: bool
 
 
 class VeadoController(Subject):
@@ -15,17 +20,20 @@ class VeadoController(Subject):
         self.frontend = plugin_base
         self.ws = None
 
+        self.should_terminate = threading.Event()
+
         self.start_ws_thread()
 
     def start_ws_thread(self):
-        self.listening = True
+        self.should_terminate.clear()
         self.thread = threading.Thread(
             target=self.ws_thread, name="gg_kekemui_veadosc_wst", daemon=True
         )
         self.thread.start()
 
     def ws_thread(self):
-        while self.listening:
+        should_terminate: bool = self.should_terminate.is_set()
+        while not should_terminate:
             settings = self.frontend.get_settings()
             host = settings.get("ip", "localhost")
             port = settings.get("port", 40404)
@@ -36,14 +44,19 @@ class VeadoController(Subject):
 
                 self.send_request(SubscribeStateEventsRequest())
 
+                self.notify(ControllerConnectedEvent(True))
+
                 for message in self.ws:
                     self.on_recv(message)
             except (InvalidURI, InvalidHandshake, OSError, TimeoutError):
                 log.info("Unable to connect")
-                sleep(10)
             except ConnectionClosed:
                 log.info("Websocket closed")
-            self.ws = None
+
+            if self.ws:
+                self.ws = None
+                self.notify(ControllerConnectedEvent(False))
+            should_terminate = self.should_terminate.wait(10)
 
     def on_recv(self, message):
         event = response_factory(message)
@@ -51,9 +64,11 @@ class VeadoController(Subject):
         if event:
             self.notify(event=event)
 
-    # Untested / unexercised
+    def is_connected(self):
+        return self.ws is not None
+
     def restart(self):
-        self.listening = False
+        self.should_terminate.set()
         if self.ws:
             self.ws.close()
         self.thread.join()

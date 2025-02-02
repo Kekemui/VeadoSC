@@ -47,3 +47,14 @@ class VeadoSC(PluginBase):
 
     def send_request(self, request: Request):
         self.controller.send_request(request)
+
+    def set_settings(self, settings: dict[str, str | int]):
+        "Overrides base, triggers reconnect on changed configuration"
+        old_settings = self.get_settings()
+        dirty = settings != old_settings
+
+        # Don't over-think this, let the base do its thing
+        super().set_settings(settings)
+
+        if dirty:
+            self.controller.restart()

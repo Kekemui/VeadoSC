@@ -98,14 +98,10 @@ class SetState(Observer, ActionBase):
         settings["ip"] = entry.get_text().strip()
         self.plugin_base.set_settings(settings)
 
-        # TODO - Reconnect backend
-
     def on_port_update(self, spinner, *args):
         settings = self.plugin_base.get_settings()
         settings["port"] = int(spinner.get_value())
         self.plugin_base.set_settings(settings)
-
-        # TODO - Reconnect backend
 
     def on_state_id_update(self, entry, *args):
         log.debug("on_state_id_update")

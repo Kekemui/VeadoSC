@@ -27,7 +27,7 @@ Next, add a VeadoSC action in StreamController:
 2. In the action configuration, set the "Veadotube IP Address" to the server (this is almost certainly `localhost`).
 3. Set the "Veadotube Static Port" to the port you used earlier (`40404` if you followed the example verbatim).
 4. Finally, set the "State Name" you'd like to use for this button.
-  * For additional buttons, you only need to set this "State Name".
+   * For additional buttons, you only need to set this "State Name".
 
 ## Acknowledgements
 

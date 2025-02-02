@@ -32,14 +32,16 @@ class VeadoModel(Subject, Observer):
 
         self.controller.subscribe(self)
         self.connected: bool = controller.is_connected()
-        # Bootstrap our model
-        self.controller.send_request(ListStateEventsRequest())
-        self.controller.send_request(PeekRequest())
+        self.bootstrap()
 
     def update(self, event: StateEventsResponse):
         update_impl = self.update_map.get(type(event), self._default_update)
         update_impl(event)
         self.notify()
+
+    def bootstrap(self):
+        self.controller.send_request(ListStateEventsRequest())
+        self.controller.send_request(PeekRequest())
 
     def _list_update(self, event: ListStateEventsResponse):
         current_keys = set(self.states.keys())
@@ -73,6 +75,8 @@ class VeadoModel(Subject, Observer):
 
     def _connected_update(self, event: ControllerConnectedEvent):
         self.connected = event.is_connected
+        if self.connected:
+            self.bootstrap()
 
     def _default_update(self, event: StateEventsResponse):
         log.warn(

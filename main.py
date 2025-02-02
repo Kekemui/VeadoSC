@@ -45,8 +45,8 @@ class VeadoSC(PluginBase):
         for c in self.subscribers.values():
             c(event)
 
-    def send_request(self, request: Request):
-        self.controller.send_request(request)
+    def send_request(self, request: Request) -> bool:
+        return self.controller.send_request(request)
 
     def set_settings(self, settings: dict[str, str | int]):
         "Overrides base, triggers reconnect on changed configuration"

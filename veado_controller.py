@@ -74,9 +74,20 @@ class VeadoController(Subject):
         self.thread.join()
         self.start_ws_thread()
 
-    def send_request(self, request: Request):
-        if not self.ws:
-            log.info("Received request to publish with no active connection, ignoring")
-            return
-        reqstr = request.to_request_string()
-        self.ws.send(reqstr)
+    def send_request(self, request: Request) -> bool:
+        """
+        Sends a request to veadotube, if connected.
+
+        :param request: The request to send.
+
+        :returns: True if successful, False if not successful (e.g., if not connected
+            to a veadotube instance). It may be more Pythonic to ask
+            forgiveness than to seek permission, but in most cases we don't
+            want to explode callers if we're not connected.
+        """
+        try:
+            reqstr = request.to_request_string()
+            self.ws.send(reqstr)
+            return True
+        except AttributeError:
+            return False

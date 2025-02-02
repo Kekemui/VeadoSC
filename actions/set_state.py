@@ -29,7 +29,10 @@ class SetState(Observer, ActionBase):
         super().__init__(*args, **kwargs)
 
     def on_key_down(self):
-        self.plugin_base.send_request(SetActiveStateRequest(self.state_id))
+        success = self.plugin_base.send_request(SetActiveStateRequest(self.state_id))
+
+        if not success:
+            self.show_error(5)
 
     def update(self):
         self.render()

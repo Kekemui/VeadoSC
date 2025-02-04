@@ -4,16 +4,14 @@ from ..messages import (
     SetActiveStateRequest,
 )
 from .action_bases import StateActionBase
-
-# Import gtk modules - used for the config rows
-import gi
-
-gi.require_version("Gtk", "4.0")
-gi.require_version("Adw", "1")
-from gi.repository import Gtk, Adw  # noqa: E402, F401
+from ..utils import constants
 
 
 class SetState(StateActionBase):
+
+    action_id = f"{constants.REV_DNS}::SetState"
+    action_name = "Set State"
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 

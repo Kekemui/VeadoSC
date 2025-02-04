@@ -9,6 +9,7 @@ from .messages import (
     StateEventsRequest,
     StateEventsResponse,
     SubscribeStateEventsRequest,
+    ToggleStateRequest,
     ThumbnailRequest,
     ThumbnailResponse,
     UnsubscribeStateEventsRequest,

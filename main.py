@@ -3,13 +3,13 @@ from src.backend.PluginManager.PluginBase import PluginBase
 from src.backend.PluginManager.ActionHolder import ActionHolder
 
 # Import actions
-from .actions import SetState
-from .messages import Request, StateEventsResponse
+from .actions import SetState, ToggleState
+from .messages import Request
 from .model import VeadoModel
 from .veado_controller import VeadoController
 
 # import os
-from loguru import logger as log
+from loguru import logger as log  # noqa: F401
 
 REV_DNS = "gg_kekemui_veadosc"
 
@@ -18,19 +18,19 @@ class VeadoSC(PluginBase):
     def __init__(self):
         super().__init__()
 
-        # Internal data
-        self.subscribers: dict[str, callable] = {}
         self.controller = VeadoController(self)
 
         self.model: VeadoModel = VeadoModel(self.controller, self.PATH)
 
-        self.set_action_holder = ActionHolder(
-            plugin_base=self,
-            action_base=SetState,
-            action_id=f"{REV_DNS}::SetState",
-            action_name="Set State",
-        )
-        self.add_action_holder(self.set_action_holder)
+        for base in [SetState, ToggleState]:
+            self.add_action_holder(
+                ActionHolder(
+                    plugin_base=self,
+                    action_base=base,
+                    action_id=base.action_id,
+                    action_name=base.action_name,
+                )
+            )
 
         # Register plugin
         self.register(
@@ -39,11 +39,6 @@ class VeadoSC(PluginBase):
             plugin_version="0.0.1",
             app_version="1.5.0-beta.7",
         )
-
-    def update_callback(self, event: StateEventsResponse):
-        log.info(f"Received update: {event}")
-        for c in self.subscribers.values():
-            c(event)
 
     def send_request(self, request: Request) -> bool:
         return self.controller.send_request(request)

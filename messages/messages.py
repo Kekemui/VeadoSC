@@ -169,6 +169,14 @@ class SetActiveStateRequest(StateEventsRequest):
         return super()._get_request_payload({"event": "set", "state": self.state_id})
 
 
+class ToggleStateRequest(StateEventsRequest):
+    def __init__(self, state_id: str):
+        self.state_id = state_id
+
+    def _get_request_payload(self, _=None) -> dict[str, Any]:
+        return super()._get_request_payload({"event": "toggle", "state": self.state_id})
+
+
 NODES_RESPONSE_TYPES: list[StateEventsResponse] = [
     ListStateEventsResponse,
     PeekResponse,

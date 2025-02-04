@@ -53,6 +53,10 @@ class VeadoModel(Subject, Observer):
         update_impl(event)
         self.notify()
 
+    @property
+    def state_list(self) -> list[str]:
+        return list(self.states.keys())
+
     def bootstrap(self):
         self.controller.send_request(ListStateEventsRequest())
         self.controller.send_request(PeekRequest())

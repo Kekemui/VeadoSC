@@ -48,6 +48,33 @@ class VeadoSC(PluginBase):
     def send_request(self, request: Request) -> bool:
         return self.controller.send_request(request)
 
+    @property
+    def veado_ip(self) -> str:
+        return self.get_settings().get("ip", "localhost")
+
+    @veado_ip.setter
+    def veado_ip(self, value: str):
+        settings = self.get_settings()
+        old_ip = self.veado_ip
+        settings["ip"] = value
+        self.set_settings(settings)
+
+        if old_ip != value:  # dirty
+            self.controller.restart()
+
+    @property
+    def veado_port(self) -> str:
+        return self.get_settings().get("port", 40404)
+
+    @veado_port.setter
+    def veado_port(self, value: int):
+        settings = self.get_settings()
+        old_port = self.veado_port
+        settings["port"] = value
+
+        if old_port != value:
+            self.controller.restart()
+
     def set_settings(self, settings: dict[str, str | int]):
         "Overrides base, triggers reconnect on changed configuration"
         old_settings = self.get_settings()

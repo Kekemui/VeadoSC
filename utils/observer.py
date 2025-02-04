@@ -1,5 +1,4 @@
 from abc import ABC, abstractmethod
-from typing import Any
 from uuid import uuid4
 
 from loguru import logger as log
@@ -8,18 +7,16 @@ from loguru import logger as log
 class Observer(ABC):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        log.debug("Observer init")
         self.observer_id = str(uuid4())
 
     @abstractmethod
-    def update(self, event: Any):
+    def update(self, *args, **kwargs):
         pass
 
 
 class Subject(ABC):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        log.debug("Subject init")
         self.observers: dict[str, callable] = {}
 
     def subscribe(self, observer: Observer):
@@ -37,6 +34,6 @@ class Subject(ABC):
             try:
                 observer(*args, **kwargs)
             except Exception as e:
-                log.warn(
+                log.warning(
                     f"Caught exception {e=} while dispatching updates. Continuing."
                 )

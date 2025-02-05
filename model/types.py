@@ -1,4 +1,9 @@
 from dataclasses import dataclass
+from json import dumps, loads
+from pathlib import Path
+from typing import Any
+
+from loguru import logger as log
 from PIL.ImageFile import ImageFile
 
 
@@ -15,14 +20,3 @@ class VeadoState:
     thumb_hash: str | None = None
     thumbnail: ImageFile | None = None
     is_active: bool = False
-
-
-@dataclass
-class VeadoStack:
-    """
-    This represents Veadotube's internal `state stack`. This is more useful for
-    temporary expression overrides... and we don't support this yet. This is
-    unimplemented for now, but we'll leave it for future work.
-    """
-
-    pass

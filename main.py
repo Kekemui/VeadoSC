@@ -1,17 +1,22 @@
+# Set path so we can use absolute import paths
+from pathlib import Path
+import sys
+
+ABSOLUTE_PLUGIN_PATH = str(Path(__file__).parent.parent.absolute())
+sys.path.insert(0, ABSOLUTE_PLUGIN_PATH)
+
 # Import StreamController modules
 from src.backend.PluginManager.PluginBase import PluginBase
 from src.backend.PluginManager.ActionHolder import ActionHolder
 
 # Import actions
-from .actions import SetState, ToggleState
-from .messages import Request
-from .model import VeadoModel
-from .veado_controller import VeadoController
+from gg_kekemui_veadosc.actions import SetState, ToggleState
+from gg_kekemui_veadosc.controller import VeadoController
+from gg_kekemui_veadosc.data import VeadoSCConnectionConfig
+from gg_kekemui_veadosc.messages import Request
+from gg_kekemui_veadosc.model import VeadoModel
 
-# import os
 from loguru import logger as log  # noqa: F401
-
-REV_DNS = "gg_kekemui_veadosc"
 
 
 class VeadoSC(PluginBase):
@@ -19,6 +24,8 @@ class VeadoSC(PluginBase):
         super().__init__()
 
         self.controller = VeadoController(self)
+        log.trace('controller')
+        self.controller.config = self.conn_conf
 
         self.model: VeadoModel = VeadoModel(self.controller, self.PATH)
 
@@ -44,39 +51,16 @@ class VeadoSC(PluginBase):
         return self.controller.send_request(request)
 
     @property
-    def veado_ip(self) -> str:
-        return self.get_settings().get("ip", "localhost")
+    def conn_conf(self) -> VeadoSCConnectionConfig:
+        return VeadoSCConnectionConfig.from_dict(self.get_settings().get('connection', {}))
 
-    @veado_ip.setter
-    def veado_ip(self, value: str):
+    @conn_conf.setter
+    def conn_conf(self, value: VeadoSCConnectionConfig):
+        old = self.conn_conf # This might blow up spectacularly
+        
         settings = self.get_settings()
-        old_ip = self.veado_ip
-        settings["ip"] = value
+        settings['connection'] = value.to_dict()
         self.set_settings(settings)
 
-        if old_ip != value:  # dirty
-            self.controller.restart()
-
-    @property
-    def veado_port(self) -> str:
-        return self.get_settings().get("port", 40404)
-
-    @veado_port.setter
-    def veado_port(self, value: int):
-        settings = self.get_settings()
-        old_port = self.veado_port
-        settings["port"] = value
-
-        if old_port != value:
-            self.controller.restart()
-
-    def set_settings(self, settings: dict[str, str | int]):
-        "Overrides base, triggers reconnect on changed configuration"
-        old_settings = self.get_settings()
-        dirty = settings != old_settings
-
-        # Don't over-think this, let the base do its thing
-        super().set_settings(settings)
-
-        if dirty:
-            self.controller.restart()
+        if old != value: # dirty
+            self.controller.config = value

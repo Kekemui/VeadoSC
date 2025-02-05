@@ -1,10 +1,8 @@
 from loguru import logger as log  # noqa: F401
 
-from ..messages import (
-    ToggleStateRequest,
-)
+from gg_kekemui_veadosc.messages import ToggleStateRequest
+from gg_kekemui_veadosc.utils import constants
 from .action_bases import StateActionBase
-from ..utils import constants
 
 
 class ToggleState(StateActionBase):

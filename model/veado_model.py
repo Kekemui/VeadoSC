@@ -4,6 +4,7 @@ import os
 from loguru import logger as log
 from PIL.ImageFile import ImageFile
 
+from gg_kekemui_veadosc.data import ControllerConnectedEvent
 from ..messages import (
     ListStateEventsRequest,
     ListStateEventsResponse,
@@ -19,7 +20,7 @@ from gg_kekemui_veadosc.utils import (
     get_image_from_b64,
     get_image_from_path,
 )
-from gg_kekemui_veadosc.controller import ControllerConnectedEvent, VeadoController
+# from gg_kekemui_veadosc.controller import ControllerConnectedEvent, VeadoController
 from .types import VeadoState
 
 BG_ACTIVE = [111, 202, 28, 255]
@@ -28,12 +29,12 @@ BG_ERROR = [71, 0, 14, 255]
 
 
 class VeadoModel(Subject, Observer):
-    def __init__(self, controller: VeadoController, base_path: str):
+    def __init__(self, controller: 'VeadoController', base_path: str):
         super().__init__()
         self.states: dict[str, VeadoState] = defaultdict(lambda: VeadoState())
         self.active_state: str = ""
 
-        self.controller: VeadoController = controller
+        self.controller: 'VeadoController' = controller
 
         self.disconnected_image = get_image_from_path(
             os.path.join(base_path, "assets", "ix-icons", "disconnected.png")

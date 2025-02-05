@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 from typing import Any
 
@@ -24,6 +25,13 @@ class VeadoSCConnectionConfig:
         d[self.PORT] = self.port
 
         return d
+
+    def to_json_string(self) -> str:
+        return json.dumps(self.to_dict())
+
+    @classmethod
+    def from_json_string(cls, json_str: str) -> 'VeadoSCConnectionConfig':
+        return cls.from_dict(json.loads(json_str))
 
     @classmethod
     def from_dict(cls, d: dict[str, Any]) -> 'VeadoSCConnectionConfig':

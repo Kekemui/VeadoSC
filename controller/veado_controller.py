@@ -10,7 +10,7 @@ from watchdog.events import FileSystemEvent, FileSystemEventHandler, FileCreated
 from websockets.exceptions import InvalidURI, InvalidHandshake, ConnectionClosed
 from websockets.sync import client
 
-from gg_kekemui_veadosc.data import VeadoSCConnectionConfig
+from gg_kekemui_veadosc.data import ControllerConnectedEvent, VeadoSCConnectionConfig
 from gg_kekemui_veadosc.messages import (
     Request,
     response_factory,
@@ -18,10 +18,6 @@ from gg_kekemui_veadosc.messages import (
 )
 from gg_kekemui_veadosc.utils import Subject
 
-
-@dataclass
-class ControllerConnectedEvent:
-    is_connected: bool
 
 @dataclass
 class VTInstance:
@@ -181,6 +177,9 @@ class VeadoController(Subject):
         self._config = value
         self._restart()
 
+    def set_config(self, value):
+        self.config = VeadoSCConnectionConfig.from_json_string(value)
+
     @property
     def connected(self) -> bool:
         return self._conn and self._conn.connected
@@ -232,7 +231,7 @@ class VeadoController(Subject):
         observer.schedule(self._watchdog_handler, watch_dir, recursive=True, event_filter=[FileCreatedEvent, FileDeletedEvent, FileModifiedEvent])
         observer.start()
         self._watchdog = observer
-        log.info(f"Monitoring f{watch_dir}")
+        log.info(f"Monitoring {watch_dir}")
 
     def on_recv(self, message):
         event = response_factory(message)

@@ -191,3 +191,5 @@ def response_factory(message: str) -> StateEventsResponse:
     # log.debug(f'Detected message type: {clazz}')
     if clazz:
         return clazz(data)
+    else:
+        log.debug(f"Received unknown message {message}")

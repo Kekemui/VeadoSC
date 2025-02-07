@@ -13,8 +13,16 @@ from ..messages import (
     ThumbnailRequest,
     ThumbnailResponse,
 )
-from ..utils import Observer, Subject, get_image_from_b64, get_image_from_path
-from ..veado_controller import ControllerConnectedEvent, VeadoController
+from gg_kekemui_veadosc.utils import (
+    Observer,
+    Subject,
+    get_image_from_b64,
+    get_image_from_path,
+)
+from gg_kekemui_veadosc.controller.veado_controller import (
+    ControllerConnectedEvent,
+    VeadoController,
+)
 from .types import VeadoState
 
 BG_ACTIVE = [111, 202, 28, 255]
@@ -45,7 +53,7 @@ class VeadoModel(Subject, Observer):
         }
 
         self.controller.subscribe(self)
-        self.connected: bool = controller.is_connected()
+        self.connected: bool = controller.connected
         self.bootstrap()
 
     def update(self, event: StateEventsResponse):

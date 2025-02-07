@@ -1,4 +1,5 @@
 from abc import ABC
+from pathlib import Path
 
 from loguru import logger as log  # noqa: F401
 
@@ -13,7 +14,7 @@ import gi
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
-from gi.repository import Gtk, Adw  # noqa: E402, F401
+from gi.repository import Gtk, Adw, Gio  # noqa: E402, F401
 
 
 class VeadoGtk:
@@ -65,6 +66,7 @@ class VeadoGtk:
 
     def launch_chooser(self, *args):
         dialog = Gtk.FileDialog(title="Select veadotube instances dir", modal=True)
+        dialog.set_initial_folder(Gio.File.parse_name(self.last_selected_dir))
 
         dialog.select_folder(
             parent=None, cancellable=None, callback=self.select_callback
@@ -76,6 +78,7 @@ class VeadoGtk:
             self.last_selected_dir = selected_file.get_path()
             self.on_gtk_update()
             log.error(f"{selected_file.get_path()}")
+            log.error(f"{list(Path(self.last_selected_dir).iterdir())}")
         except gi.repository.GLib.GError:
             pass
 

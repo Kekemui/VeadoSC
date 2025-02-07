@@ -67,12 +67,21 @@ class VeadoGtk:
         self.instances_expando.set_expanded(config.smart_connect)
         self.instances_expando.set_enable_expansion(config.smart_connect)
 
-        self.instances_path.set_text(str(config.instances_dir))
+        existing_path = self.instances_path.get_text().strip()
+        if existing_path == str(config.instances_dir):
+            log.error("Suppressing update to instances path")
+        else:
+            self.instances_path.set_text(str(config.instances_dir))
 
         self.direct_expando.set_expanded(not config.smart_connect)
         self.direct_expando.set_enable_expansion(not config.smart_connect)
 
-        self.ip_entry.set_text(config.hostname)
+        existing_hostname = self.ip_entry.get_text().strip()
+        if existing_hostname == config.hostname:
+            log.error("SUppressing update to hostname")
+        else:
+            self.ip_entry.set_text(config.hostname)
+
         self.port_spinner.set_value(config.port)
 
         self.connect_signals()

@@ -42,6 +42,7 @@ class VeadoWatchdogHandler(FileSystemEventHandler):
     def on_modified(self, event: FileModifiedEvent | Any):
         if not isinstance(event, FileModifiedEvent):
             return
+        log.trace(f"on_modified: {event.src_path}")
 
         new_instance = info_from_path(event.src_path)
 
@@ -63,6 +64,8 @@ class VeadoWatchdogHandler(FileSystemEventHandler):
     def on_deleted(self, event: FileDeletedEvent | Any):
         if not isinstance(event, FileDeletedEvent):
             return
+
+        log.trace(f"on_modified: {event.src_path}")
 
         veado_id = Path(event.src_path).name
 

@@ -15,18 +15,26 @@ gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 from gi.repository import Gtk, Adw  # noqa: E402, F401
 
+
 class VeadoGtk:
 
-    def __init__(self, action: 'VeadoSCActionBase', config: VeadoSCConnectionConfig, is_connected: bool):
+    def __init__(
+        self,
+        action: "VeadoSCActionBase",
+        config: VeadoSCConnectionConfig,
+        is_connected: bool,
+    ):
         self.action = action
 
         self.expander = Adw.ExpanderRow(title="Veadotube Connection Config")
 
-        self.mode_switch = Adw.SwitchRow(title='Use Smart Connect', subtitle='Default: On')
-        
-        self.instances_expando = Adw.ExpanderRow(title='veadotube Smart Connect Config')
+        self.mode_switch = Adw.SwitchRow(
+            title="Use Smart Connect", subtitle="Default: On"
+        )
 
-        self.instances_path = Adw.EntryRow(title='veadotube instances directory')
+        self.instances_expando = Adw.ExpanderRow(title="veadotube Smart Connect Config")
+
+        self.instances_path = Adw.EntryRow(title="veadotube instances directory")
         self.instances_expando.add_row(self.instances_path)
 
         self.direct_expando = Adw.ExpanderRow(title="veadotube direct connect config")
@@ -36,7 +44,7 @@ class VeadoGtk:
 
         self.direct_expando.add_row(self.ip_entry)
         self.direct_expando.add_row(self.port_spinner)
-        
+
         self.expander.add_row(self.mode_switch)
         self.expander.add_row(self.instances_expando)
         self.expander.add_row(self.direct_expando)
@@ -45,15 +53,17 @@ class VeadoGtk:
 
     def get_config_rows(self) -> list[Adw.PreferencesRow]:
         return [self.expander]
-    
-    def update_gtk_model(self, config: VeadoSCConnectionConfig, is_connected: bool | None = None):
+
+    def update_gtk_model(
+        self, config: VeadoSCConnectionConfig, is_connected: bool | None = None
+    ):
         self.disconnect_signals()
-        
+
         if is_connected is not None:
             self.expander.set_expanded(not is_connected)
 
         self.mode_switch.set_active(config.smart_connect)
-        
+
         self.instances_expando.set_expanded(config.smart_connect)
         self.instances_expando.set_enable_expansion(config.smart_connect)
 
@@ -68,14 +78,19 @@ class VeadoGtk:
         self.connect_signals()
 
     def connect_signals(self):
-        self.mode_switch.connect('notify::active', self.on_gtk_update)
-        self.instances_path.connect('notify::text', self.on_gtk_update)
-        self.ip_entry.connect('notify::text', self.on_gtk_update)
-        self.port_spinner.connect('notify::value', self.on_gtk_update)
+        self.mode_switch.connect("notify::active", self.on_gtk_update)
+        self.instances_path.connect("notify::text", self.on_gtk_update)
+        self.ip_entry.connect("notify::text", self.on_gtk_update)
+        self.port_spinner.connect("notify::value", self.on_gtk_update)
 
     def disconnect_signals(self):
         try:
-            for item in (self.mode_switch, self.instances_path, self.ip_entry, self.port_spinner):
+            for item in (
+                self.mode_switch,
+                self.instances_path,
+                self.ip_entry,
+                self.port_spinner,
+            ):
                 item.disconnect_by_func(self.on_gtk_update)
         except TypeError:
             pass
@@ -90,7 +105,7 @@ class VeadoGtk:
             smart_connect=should_use_smart,
             instances_dir=path,
             hostname=hostname,
-            port=port
+            port=port,
         )
 
         self.action.plugin_base.conn_conf = config

@@ -13,6 +13,7 @@ from src.backend.PluginManager.ActionHolder import ActionHolder
 
 # Import actions
 from gg_kekemui_veadosc.actions import SetState, ToggleState
+
 # from gg_kekemui_veadosc.controller import VeadoController
 from gg_kekemui_veadosc.data import VeadoSCConnectionConfig
 from gg_kekemui_veadosc.messages import Request
@@ -27,12 +28,13 @@ class VeadoSC(PluginBase):
     def __init__(self):
         super().__init__()
 
-        backend_path = os.path.join(self.PATH,  "backend", "backend.py")
-        backend_venv = os.path.join(self.PATH, 'backend', '.venv')
-        self.launch_backend(backend_path=backend_path, venv_path=backend_venv, open_in_terminal=True)
+        backend_path = os.path.join(self.PATH, "backend", "backend.py")
+        backend_venv = os.path.join(self.PATH, "backend", ".venv")
+        self.launch_backend(
+            backend_path=backend_path, venv_path=backend_venv, open_in_terminal=True
+        )
 
         sleep(5)
-
 
         self.controller = self.backend.get_controller()
         self.controller.set_config(self.conn_conf.to_json_string())
@@ -62,15 +64,17 @@ class VeadoSC(PluginBase):
 
     @property
     def conn_conf(self) -> VeadoSCConnectionConfig:
-        return VeadoSCConnectionConfig.from_dict(self.get_settings().get('connection', {}))
+        return VeadoSCConnectionConfig.from_dict(
+            self.get_settings().get("connection", {})
+        )
 
     @conn_conf.setter
     def conn_conf(self, value: VeadoSCConnectionConfig):
-        old = self.conn_conf # This might blow up spectacularly
-        
+        old = self.conn_conf  # This might blow up spectacularly
+
         settings = self.get_settings()
-        settings['connection'] = value.to_dict()
+        settings["connection"] = value.to_dict()
         self.set_settings(settings)
 
-        if old != value: # dirty
-            self.controller.config = value
+        if old != value:  # dirty
+            self.controller.set_config(value)

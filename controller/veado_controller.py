@@ -6,7 +6,13 @@ from typing import Any
 
 from loguru import logger as log
 from watchdog.observers import Observer
-from watchdog.events import FileSystemEvent, FileSystemEventHandler, FileCreatedEvent, FileModifiedEvent, FileDeletedEvent
+from watchdog.events import (
+    FileSystemEvent,
+    FileSystemEventHandler,
+    FileCreatedEvent,
+    FileModifiedEvent,
+    FileDeletedEvent,
+)
 from websockets.exceptions import InvalidURI, InvalidHandshake, ConnectionClosed
 from websockets.sync import client
 
@@ -25,21 +31,23 @@ class VTInstance:
     hostname: str
     port: int
 
+
 def info_from_path(raw_path: str) -> (str, VTInstance):
     path = Path(raw_path)
     contents = path.read_text()
     info = json.loads(contents)
     try:
-        veado_id = info['id']
-        host_port = info['server']
+        veado_id = info["id"]
+        host_port = info["server"]
     except KeyError:
         return None
-    host_parts = host_port.split(':')
+    host_parts = host_port.split(":")
     return VTInstance(veado_id=veado_id, hostname=host_parts[0], port=host_parts[1])
+
 
 class VeadoWatchdogHandler(FileSystemEventHandler):
 
-    def __init__(self, controller: 'VeadoController'):
+    def __init__(self, controller: "VeadoController"):
         self.known_instances: dict[str, VTInstance] = {}
         self.ctrl = controller
 
@@ -57,17 +65,17 @@ class VeadoWatchdogHandler(FileSystemEventHandler):
 
         if not new_instance:
             return
-        
+
         if new_instance == self.known_instances.get(new_instance.veado_id):
             # No changes, nothing to do here
             return
 
         old_instance = self.known_instances.get(new_instance.veado_id)
         self.known_instances[new_instance.veado_id] = new_instance
-        log.warning(f'Detected change to instance {new_instance.veado_id}')
+        log.warning(f"Detected change to instance {new_instance.veado_id}")
         self.ctrl._terminate_connection(old_instance)
         self.ctrl._propose_connection(new_instance)
-    
+
     def on_deleted(self, event: FileDeletedEvent | Any):
         if not isinstance(event, FileDeletedEvent):
             return
@@ -75,7 +83,9 @@ class VeadoWatchdogHandler(FileSystemEventHandler):
         veado_id = Path(event.src_path).name
 
         if veado_id not in self.known_instances:
-            log.warning(f'File {veado_id} deleted, but not in known set {self.known_instances.keys()}')
+            log.warning(
+                f"File {veado_id} deleted, but not in known set {self.known_instances.keys()}"
+            )
 
         outgoing_instance = self.known_instances[veado_id]
         self.ctrl._terminate_connection(outgoing_instance)
@@ -84,8 +94,8 @@ class VeadoWatchdogHandler(FileSystemEventHandler):
         # listening, we won't connect. Not sure if we should.
 
 
-class VTConnection():
-    def __init__(self, controller: 'VeadoController', conf: VTInstance):
+class VTConnection:
+    def __init__(self, controller: "VeadoController", conf: VTInstance):
         self.ctrl = controller
         self.conf = conf
 
@@ -153,7 +163,8 @@ class VTConnection():
                 self.ws = None
                 self.ctrl.notify(ControllerConnectedEvent(False))
             should_terminate = self.should_terminate.wait(10)
-        log.warning(f'Connection terminated by request')
+        log.warning(f"Connection terminated by request")
+
 
 class VeadoController(Subject):
     def __init__(self, plugin_base):
@@ -178,7 +189,9 @@ class VeadoController(Subject):
         self._restart()
 
     def set_config(self, value):
-        self.config = VeadoSCConnectionConfig.from_json_string(value)
+        if isinstance(value, str):
+            value = VeadoSCConnectionConfig.from_json_string(value)
+        self.config = value
 
     @property
     def connected(self) -> bool:
@@ -197,27 +210,35 @@ class VeadoController(Subject):
         if self.config.smart_connect:
             self._create_watchdog()
         else:
-            instance = VTInstance(veado_id='', hostname=self.config.hostname, port=self.config.port)
+            instance = VTInstance(
+                veado_id="", hostname=self.config.hostname, port=self.config.port
+            )
             self._propose_connection(instance)
 
     def _propose_connection(self, instance: VTInstance):
         if self._conn:
-            log.warning(f'Received request to connect to {instance}, but already talking to {self._conn.conf}')
+            log.warning(
+                f"Received request to connect to {instance}, but already talking to {self._conn.conf}"
+            )
             return
 
-        log.info(f'Accepting proposal to connect to {instance}')
+        log.info(f"Accepting proposal to connect to {instance}")
         self._conn = VTConnection(self, instance)
 
-    def _terminate_connection(self, instance: VTInstance | None = None, force: bool = False):
+    def _terminate_connection(
+        self, instance: VTInstance | None = None, force: bool = False
+    ):
         if not self._conn:
-            log.info(f'Nothing to terminate')
+            log.info(f"Nothing to terminate")
             return
 
         if not force and instance != self._conn.conf:
-            log.info(f'Received request to terminate {instance}, but connected to {self._conn.conf}')
+            log.info(
+                f"Received request to terminate {instance}, but connected to {self._conn.conf}"
+            )
             return
-        
-        log.warning(f'Terminating {self._conn.conf}')
+
+        log.warning(f"Terminating {self._conn.conf}")
         self._conn.terminate()
         self._conn = None
 
@@ -228,7 +249,12 @@ class VeadoController(Subject):
         # changes, we're sunk.
         observer = Observer()
         watch_dir = str(self.config.instances_dir.expanduser())
-        observer.schedule(self._watchdog_handler, watch_dir, recursive=True, event_filter=[FileCreatedEvent, FileDeletedEvent, FileModifiedEvent])
+        observer.schedule(
+            self._watchdog_handler,
+            watch_dir,
+            recursive=True,
+            event_filter=[FileCreatedEvent, FileDeletedEvent, FileModifiedEvent],
+        )
         observer.start()
         self._watchdog = observer
         log.info(f"Monitoring {watch_dir}")
@@ -238,8 +264,6 @@ class VeadoController(Subject):
         log.info(f"Received event {type(event)}")
         if event:
             self.notify(event=event)
-
-
 
     def send_request(self, request: Request) -> bool:
         """

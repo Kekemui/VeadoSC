@@ -8,6 +8,7 @@ from streamcontroller_plugin_tools import BackendBase
 
 from gg_kekemui_veadosc.controller import VeadoController
 
+
 class Backend(BackendBase):
     def __init__(self):
         super().__init__()
@@ -16,5 +17,6 @@ class Backend(BackendBase):
 
     def get_controller(self):
         return self.ctrl
+
 
 backend = Backend()

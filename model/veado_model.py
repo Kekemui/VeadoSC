@@ -20,6 +20,7 @@ from gg_kekemui_veadosc.utils import (
     get_image_from_b64,
     get_image_from_path,
 )
+
 # from gg_kekemui_veadosc.controller import ControllerConnectedEvent, VeadoController
 from .types import VeadoState
 
@@ -29,12 +30,12 @@ BG_ERROR = [71, 0, 14, 255]
 
 
 class VeadoModel(Subject, Observer):
-    def __init__(self, controller: 'VeadoController', base_path: str):
+    def __init__(self, controller: "VeadoController", base_path: str):
         super().__init__()
         self.states: dict[str, VeadoState] = defaultdict(lambda: VeadoState())
         self.active_state: str = ""
 
-        self.controller: 'VeadoController' = controller
+        self.controller: "VeadoController" = controller
 
         self.disconnected_image = get_image_from_path(
             os.path.join(base_path, "assets", "ix-icons", "disconnected.png")
@@ -121,6 +122,6 @@ class VeadoModel(Subject, Observer):
             self.bootstrap()
 
     def _default_update(self, event: StateEventsResponse):
-        log.warn(
+        log.warning(
             f"Received unknown StateEventsResponse type {type(event)}: {event.__repr__()}"
         )

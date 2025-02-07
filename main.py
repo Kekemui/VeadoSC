@@ -30,7 +30,7 @@ class VeadoSC(PluginBase):
 
         backend_path = os.path.join(self.PATH, "backend", "backend.py")
         backend_venv = os.path.join(self.PATH, "backend", ".venv")
-        self.launch_backend(backend_path=backend_path, venv_path=backend_venv, launch_backend=should_use_debug)
+        self.launch_backend(backend_path=backend_path, venv_path=backend_venv, open_in_terminal=should_use_debug)
         self.wait_for_backend(100)
 
         self.controller = VeadoController(self)

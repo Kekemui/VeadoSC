@@ -26,9 +26,11 @@ class VeadoSC(PluginBase):
     def __init__(self):
         super().__init__()
 
+        should_use_debug = bool(os.getenv('GG_KEKEMUI_VEADOSC_DEBUG', ''))
+
         backend_path = os.path.join(self.PATH, "backend", "backend.py")
         backend_venv = os.path.join(self.PATH, "backend", ".venv")
-        self.launch_backend(backend_path=backend_path, venv_path=backend_venv)
+        self.launch_backend(backend_path=backend_path, venv_path=backend_venv, launch_backend=should_use_debug)
         self.wait_for_backend(100)
 
         self.controller = VeadoController(self)

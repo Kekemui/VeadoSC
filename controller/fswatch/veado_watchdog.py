@@ -97,7 +97,7 @@ class VeadoWatchdog:
 
         self.terminate_watchdog()
 
-        log.info("Starting fs watch")
+        log.info(f"Starting fs watch on {path}")
 
         # Improvement - list the directory before we kick off the watchdog.
         # Watchdog will pick up running veadotube instances - assuming vt
@@ -105,6 +105,7 @@ class VeadoWatchdog:
         # changes, we're sunk.
         observer = Observer()
         watch_dir = str(Path(path).expanduser())
+        log.info(f'Final dir: {watch_dir}')
         observer.schedule(
             self._watchdog_handler,
             watch_dir,

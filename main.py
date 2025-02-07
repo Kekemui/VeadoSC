@@ -26,11 +26,15 @@ class VeadoSC(PluginBase):
     def __init__(self):
         super().__init__()
 
-        should_use_debug = bool(os.getenv('GG_KEKEMUI_VEADOSC_DEBUG', ''))
+        should_use_debug = bool(os.getenv("GG_KEKEMUI_VEADOSC_DEBUG", ""))
 
         backend_path = os.path.join(self.PATH, "backend", "backend.py")
         backend_venv = os.path.join(self.PATH, "backend", ".venv")
-        self.launch_backend(backend_path=backend_path, venv_path=backend_venv, open_in_terminal=should_use_debug)
+        self.launch_backend(
+            backend_path=backend_path,
+            venv_path=backend_venv,
+            open_in_terminal=should_use_debug,
+        )
         self.wait_for_backend(100)
 
         self.controller = VeadoController(self)
@@ -95,6 +99,9 @@ class VeadoSC(PluginBase):
         self.controller.config = value
 
         if value.smart_connect:
+            p = value.instances_dir.expanduser()
+            pstr = str(p)
+            log.trace(f'Sending watchdog {pstr}. Does Path think it exists? {p.exists()}')
             self.backend.create_watchdog(str(value.instances_dir.expanduser()))
         else:
             self.backend.terminate_watchdog()

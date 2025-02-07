@@ -105,7 +105,7 @@ class VeadoWatchdog:
         # changes, we're sunk.
         observer = Observer()
         watch_dir = str(Path(path).expanduser())
-        log.info(f'Final dir: {watch_dir}')
+        log.info(f"Final dir: {watch_dir}")
         observer.schedule(
             self._watchdog_handler,
             watch_dir,

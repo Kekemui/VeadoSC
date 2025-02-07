@@ -103,12 +103,17 @@ class VeadoSC(PluginBase):
         if value.smart_connect:
             p = value.instances_dir.expanduser()
             pstr = str(p)
-            if p.exists():
+            if not p.exists():
+                log.trace(f"Path doesn't think {pstr} exists. Suppressing watchdog.")
+                self.backend.terminate_watchdog()
+            elif not pstr.endswith("instances") and not pstr.endswith("instances/"):
+                log.trace(
+                    f"{pstr} doesn't end with 'instances' or 'instances/'. Suppressing watchdog."
+                )
+                self.backend.terminate_watchdog()
+            else:
                 log.trace("Creating watchdog.")
                 self.backend.create_watchdog(str(value.instances_dir.expanduser()))
-            else:
-                log.trace(f"Path doesn't think {pstr} exists. Suppressing watchdog.")
-                return
 
         else:
             self.backend.terminate_watchdog()

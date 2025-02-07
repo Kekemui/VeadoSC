@@ -112,6 +112,7 @@ class VeadoWatchdog:
             return
         watch_dir = str(p)
         log.info(f"Final dir: {watch_dir}")
+        log.info(f"{list(p.iterdir())}")
         observer.schedule(
             self._watchdog_handler,
             watch_dir,

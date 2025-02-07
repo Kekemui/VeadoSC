@@ -104,7 +104,10 @@ class VeadoWatchdog:
         # continues to rewrite the instance file every few seconds. If that
         # changes, we're sunk.
         observer = Observer()
-        watch_dir = str(Path(path).expanduser())
+        p = Path(path).expanduser()
+        if not p.exists():
+            return
+        watch_dir = str(p)
         log.info(f"Final dir: {watch_dir}")
         observer.schedule(
             self._watchdog_handler,

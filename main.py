@@ -26,7 +26,7 @@ class VeadoSC(PluginBase):
     def __init__(self):
         super().__init__()
 
-        log.debug(f'{os.getenv('container')}')
+        log.debug(f"{os.getenv('container')}")
 
         should_use_debug = bool(os.getenv("GG_KEKEMUI_VEADOSC_DEBUG", ""))
 
@@ -40,7 +40,7 @@ class VeadoSC(PluginBase):
         self.wait_for_backend(100)
 
         self.controller = VeadoController(self)
-        log.trace("controller")
+
         self._propagate_config(self.conn_conf, force=True)
 
         self.model: VeadoModel = VeadoModel(self.controller, self.PATH)
@@ -104,9 +104,11 @@ class VeadoSC(PluginBase):
             p = value.instances_dir.expanduser()
             pstr = str(p)
             if p.exists():
+                log.trace("Creating watchdog.")
                 self.backend.create_watchdog(str(value.instances_dir.expanduser()))
             else:
-                log.trace(f"Path doesn't think {pstr} exists. Suppressing watchdog")
-                
+                log.trace(f"Path doesn't think {pstr} exists. Suppressing watchdog.")
+                return
+
         else:
             self.backend.terminate_watchdog()

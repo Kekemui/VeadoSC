@@ -5,8 +5,6 @@ import sys
 ABSOLUTE_PLUGIN_PATH = str(Path(__file__).parent.parent.absolute())
 sys.path.insert(0, ABSOLUTE_PLUGIN_PATH)
 
-import os
-
 # Import StreamController modules
 from src.backend.PluginManager.PluginBase import PluginBase
 from src.backend.PluginManager.ActionHolder import ActionHolder
@@ -26,24 +24,11 @@ class VeadoSC(PluginBase):
     def __init__(self):
         super().__init__()
 
-        log.debug(f"{os.getenv('container')}")
-
-        should_use_debug = bool(os.getenv("GG_KEKEMUI_VEADOSC_DEBUG", ""))
-
-        backend_path = os.path.join(self.PATH, "backend", "backend.py")
-        backend_venv = os.path.join(self.PATH, "backend", ".venv")
-        self.launch_backend(
-            backend_path=backend_path,
-            venv_path=backend_venv,
-            open_in_terminal=should_use_debug,
-        )
-        self.wait_for_backend(100)
-
         self.controller = VeadoController(self)
 
-        self._propagate_config(self.conn_conf, force=True)
-
         self.model: VeadoModel = VeadoModel(self.controller, self.PATH)
+
+        self._propagate_config(self.conn_conf, force=True)
 
         for base in [SetState, ToggleState]:
             self.add_action_holder(
@@ -82,9 +67,7 @@ class VeadoSC(PluginBase):
 
     @property
     def conn_conf(self) -> VeadoSCConnectionConfig:
-        return VeadoSCConnectionConfig.from_dict(
-            self.get_settings().get("connection", {})
-        )
+        return VeadoSCConnectionConfig.from_dict(self.get_settings().get("connection", {}))
 
     @conn_conf.setter
     def conn_conf(self, value: VeadoSCConnectionConfig):
@@ -99,21 +82,3 @@ class VeadoSC(PluginBase):
 
     def _propagate_config(self, value: VeadoSCConnectionConfig, force: bool = False):
         self.controller.config = value
-
-        if value.smart_connect:
-            p = value.instances_dir.expanduser()
-            pstr = str(p)
-            if not p.exists():
-                log.trace(f"Path doesn't think {pstr} exists. Suppressing watchdog.")
-                self.backend.terminate_watchdog()
-            elif not pstr.endswith("instances") and not pstr.endswith("instances/"):
-                log.trace(
-                    f"{pstr} doesn't end with 'instances' or 'instances/'. Suppressing watchdog."
-                )
-                self.backend.terminate_watchdog()
-            else:
-                log.trace("Creating watchdog.")
-                self.backend.create_watchdog(str(value.instances_dir.expanduser()))
-
-        else:
-            self.backend.terminate_watchdog()

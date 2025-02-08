@@ -1,5 +1,0 @@
-watchdog>=6.0.0
-streamcontroller-plugin-tools>=2.0.1
-websockets>=13.1
-rpyc>=6.0.1
-loguru>=0.7.2

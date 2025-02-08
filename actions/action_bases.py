@@ -29,9 +29,7 @@ class VeadoGtk:
 
         self.expander = Adw.ExpanderRow(title="Veadotube Connection Config")
 
-        self.mode_switch = Adw.SwitchRow(
-            title="Use Smart Connect", subtitle="Default: On"
-        )
+        self.mode_switch = Adw.SwitchRow(title="Use Smart Connect", subtitle="Default: On")
 
         self.last_selected_dir = str(config.instances_dir.expanduser())
 
@@ -68,9 +66,7 @@ class VeadoGtk:
         dialog = Gtk.FileDialog(title="Select veadotube instances dir", modal=True)
         dialog.set_initial_folder(Gio.File.parse_name(self.last_selected_dir))
 
-        dialog.select_folder(
-            parent=None, cancellable=None, callback=self.select_callback
-        )
+        dialog.select_folder(parent=None, cancellable=None, callback=self.select_callback)
 
     def select_callback(self, dialog, result):
         try:
@@ -85,9 +81,7 @@ class VeadoGtk:
     def get_config_rows(self) -> list[Adw.PreferencesRow]:
         return [self.expander]
 
-    def update_gtk_model(
-        self, config: VeadoSCConnectionConfig, is_connected: bool | None = None
-    ):
+    def update_gtk_model(self, config: VeadoSCConnectionConfig, is_connected: bool | None = None):
         self.disconnect_signals()
 
         if is_connected is not None:
@@ -196,10 +190,7 @@ class StateGtk:
         all_states.append("(Other - enter below)")
 
         try:
-            old_states = list(
-                self.states_model[x].get_string()
-                for x in range(0, self.states_model.get_n_items())
-            )
+            old_states = list(self.states_model[x].get_string() for x in range(0, self.states_model.get_n_items()))
         except AttributeError:
             old_states = []
 
@@ -278,12 +269,8 @@ class StateActionBase(VeadoSCActionBase, ABC):
         if not self.on_ready_called:
             return
 
-        self.set_media(
-            image=self.model.get_image_for_state(self.state_id), size=0.75, update=False
-        )
-        self.set_background_color(
-            self.model.get_color_for_state(self.state_id), update=False
-        )
+        self.set_media(image=self.model.get_image_for_state(self.state_id), size=0.75, update=False)
+        self.set_background_color(self.model.get_color_for_state(self.state_id), update=False)
         self.set_bottom_label(self.state_id, update=False)
 
         self.get_input().update()

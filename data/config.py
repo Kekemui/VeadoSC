@@ -21,9 +21,7 @@ class VeadoSCConnectionConfig:
         self.hostname = hostname
         self.port = port
 
-        instances_dir = (
-            instances_dir if isinstance(instances_dir, Path) else Path(instances_dir)
-        )
+        instances_dir = instances_dir if isinstance(instances_dir, Path) else Path(instances_dir)
         if instances_dir.exists():
             self.instances_dir = instances_dir
         else:

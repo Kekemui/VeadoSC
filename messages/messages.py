@@ -73,16 +73,12 @@ class StateEventsResponse(NodesBase, Response, ABC):
 
 class SubscribeStateEventsRequest(StateEventsRequest):
     def _get_request_payload(self, _=None) -> dict[str, Any]:
-        return super()._get_request_payload(
-            {"event": "listen", "token": "gg_kekemui_veadosc"}
-        )
+        return super()._get_request_payload({"event": "listen", "token": "gg_kekemui_veadosc"})
 
 
 class UnsubscribeStateEventsRequest(StateEventsRequest):
     def _get_request_payload(self, _=None) -> dict[str, Any]:
-        return super()._get_request_payload(
-            {"event": "unlisten", "token": "gg_kekemui_veadosc"}
-        )
+        return super()._get_request_payload({"event": "unlisten", "token": "gg_kekemui_veadosc"})
 
 
 class ListStateEventsRequest(StateEventsRequest):

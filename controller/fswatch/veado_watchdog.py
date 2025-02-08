@@ -1,130 +1,130 @@
-import json
+from dataclasses import dataclass
+from enum import Enum
 from pathlib import Path
-from typing import Any
+from queue import SimpleQueue, Empty
+import threading
 
 from loguru import logger as log
-from watchdog.observers import Observer
-from watchdog.events import (
-    FileSystemEventHandler,
-    FileCreatedEvent,
-    FileModifiedEvent,
-    FileDeletedEvent,
-)
 
-from gg_kekemui_veadosc.controller.types import VTInstance
+from gg_kekemui_veadosc.controller.types import ConnectionManager, VTInstance
 
 
-def info_from_path(raw_path: str) -> (str, VTInstance):
-    path = Path(raw_path)
-    contents = path.read_text()
-    info = json.loads(contents)
-    try:
-        veado_id = info["id"]
-        host_port = info["server"]
-    except KeyError:
-        return None
-    host_parts = host_port.split(":")
-    return VTInstance(veado_id=veado_id, hostname=host_parts[0], port=host_parts[1])
+@dataclass
+class FileData:
+    contents: VTInstance
+    modified: int
 
 
-class VeadoWatchdogHandler(FileSystemEventHandler):
+class EventType(Enum):
+    MODIFIED = 1
+    DELETED = 2
 
-    def __init__(self, watchdog: "VeadoWatchdog"):
-        self.known_instances: dict[str, VTInstance] = {}
-        self.watchdog = watchdog
 
-    def clear(self):
-        self.known_instances = {}
+@dataclass
+class FileEvent:
+    event: EventType
+    new_instance: VTInstance | None = None
+    old_instance: VTInstance | None = None
 
-    # on_created and on_modified were basically doing the same thing, but the
-    # watchdog was so fast that we were hitting a race condition. We now just
-    # rely on on_modified to do the work of both.
-    def on_modified(self, event: FileModifiedEvent | Any):
-        if not isinstance(event, FileModifiedEvent):
+
+FS_POLL_TIME = 2.5
+FS_THREAD_NAME = "gg_kekemui_veadosc::vpw_fs_poller"
+
+QUEUE_THREAD_NAME = "gg_kekemui_veadosc::queue_poller"
+QUEUE_WAIT_TIME = 5
+
+
+class VeadoPollingWatchdog:
+    def __init__(self, cm: ConnectionManager):
+        self._cm = cm
+
+        self._update_queue = SimpleQueue()
+
+        self._queue_thread = threading.Thread(target=self._queue_consumer, name=QUEUE_THREAD_NAME, daemon=True)
+        self._queue_thread.start()
+
+        self._fs_thread: threading.Thread = None
+        self._watch_dir: Path = None
+        self._stop_fs_thread = threading.Event()
+        self._files: dict[str, FileData] = {}
+
+    def start_poller(self, watch_dir: Path):
+        if not watch_dir:
+            log.warning("VeadoPollingWatchdog::start_poller called with None watch_dir")
             return
 
-        new_instance = info_from_path(event.src_path)
-
-        if not new_instance:
+        dir_str = str(watch_dir)
+        if not dir_str.endswith("instances") and not dir_str.endswith("instances/"):
+            log.warning(f"Watchdog configured with path {dir_str} that does not end with `instances`. Ignoring.")
             return
 
-        if new_instance == self.known_instances.get(new_instance.veado_id):
-            # No changes, nothing to do here
+        self.stop_poller()
+
+        self._stop_fs_thread.clear()
+        self._watch_dir = watch_dir
+        self._fs_thread = threading.Thread(target=self._fs_poller, name=FS_THREAD_NAME, daemon=True)
+        self._fs_thread.start()
+
+    def stop_poller(self):
+        if not self._stop_fs_thread:
             return
 
-        old_instance = self.known_instances.get(new_instance.veado_id)
-        self.known_instances[new_instance.veado_id] = new_instance
+        self._stop_fs_thread.set()
+        self._files = {}
+        self._watch_dir = None
 
-        if old_instance:
-            self.watchdog.terminate_connection(old_instance)
+    def _fs_poller(self):
+        log.info(f"FS Poller started, monitoring {str(self._watch_dir.absolute())}")
 
-        self.watchdog.propose_connection(new_instance)
+        should_continue = True
+        while should_continue:
+            try:
+                updated_files: dict[str, FileData] = {}
+                for f in self._watch_dir.iterdir():
+                    instance = VTInstance.from_path(f)
+                    if not instance:
+                        continue
 
-    def on_deleted(self, event: FileDeletedEvent | Any):
-        if not isinstance(event, FileDeletedEvent):
-            return
+                    mod_time = int(f.lstat().st_mtime)
+                    updated_files[str(f.absolute())] = FileData(instance, mod_time)
 
-        veado_id = Path(event.src_path).name
+                for path, file_data in updated_files.items():
+                    if path not in self._files:  # net-new
+                        self._update_queue.put(FileEvent(EventType.MODIFIED, file_data.contents))
+                    else:
+                        if file_data.contents != self._files[path].contents:
+                            log.trace(f"{path} is modified")
+                            self._update_queue.put(
+                                FileEvent(
+                                    EventType.MODIFIED,
+                                    file_data.contents,
+                                    self._files[path].contents,
+                                )
+                            )
+                        del self._files[path]
 
-        if veado_id not in self.known_instances:
-            log.warning(
-                f"File {veado_id} deleted, but not in known set {self.known_instances.keys()}"
-            )
+                for path, file_data in self._files.items():  # Anything left over was deleted
+                    log.trace(f"{path} was deleted")
+                    self._update_queue.put(FileEvent(EventType.DELETED, old_instance=file_data.contents))
 
-        outgoing_instance = self.known_instances[veado_id]
-        self.watchdog.terminate_connection(outgoing_instance)
-        del self.known_instances[veado_id]
-        # As is, if there's another instance in the folder that is actively
-        # listening, we won't connect. Not sure if we should.
+                self._files = updated_files
+            except FileNotFoundError as e:
+                log.warning(f"Couldn't find {e.filename}. Suppressing exception.")
 
+            should_continue = not self._stop_fs_thread.wait(timeout=FS_POLL_TIME)
+        log.info("FS thread terminating")
 
-class VeadoWatchdog:
+    def _queue_consumer(self):
+        log.info("Queue consumer started")
+        while True:
+            try:
+                event = self._update_queue.get(block=True, timeout=QUEUE_WAIT_TIME)
 
-    def __init__(self, backend):
-        self._watchdog_handler = VeadoWatchdogHandler(self)
-        self.backend = backend
-        self._watchdog = None
+                if event.old_instance:
+                    self._cm.terminate_connection(event.old_instance)
 
-    def terminate_watchdog(self):
-        if self._watchdog:
-            self._watchdog.stop()
-            self._watchdog.join()
-            self._watchdog_handler.clear()
-            self._watchdog = None
-            log.info("Terminated fs watch")
+                if event.new_instance:
+                    self._cm.propose_connection(event.new_instance)
 
-    def create_watchdog(self, path: str):
-
-        self.terminate_watchdog()
-
-        log.info(f"Starting fs watch on {path}")
-
-        # Improvement - list the directory before we kick off the watchdog.
-        # Watchdog will pick up running veadotube instances - assuming vt
-        # continues to rewrite the instance file every few seconds. If that
-        # changes, we're sunk.
-        observer = Observer()
-        p = Path(path).expanduser()
-        if not p.exists():
-            return
-        watch_dir = str(p)
-        log.info(f"Final dir: {watch_dir}")
-        observer.schedule(
-            self._watchdog_handler,
-            watch_dir,
-            recursive=True,
-            event_filter=[FileCreatedEvent, FileDeletedEvent, FileModifiedEvent],
-        )
-        observer.start()
-        self._watchdog = observer
-        log.info(f"Monitoring {watch_dir}")
-
-    def propose_connection(self, instance: VTInstance):
-        i = instance.to_json_string()
-        log.trace(f"propose_connection: {i}")
-        self.backend.frontend.propose_connection(i)
-
-    def terminate_connection(self, instance: VTInstance):
-        i = instance.to_json_string()
-        log.trace(f"terminate_connection: {i}")
-        self.backend.frontend.terminate_connection(i)
+            except Empty:
+                continue

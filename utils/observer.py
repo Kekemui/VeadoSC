@@ -21,9 +21,7 @@ class Subject(ABC):
 
     def subscribe(self, observer: Observer):
         if not hasattr(observer, "observer_id"):
-            log.error(
-                f"{observer=} does not have an observer_id. {observer.__repr__()}"
-            )
+            log.error(f"{observer=} does not have an observer_id. {observer.__repr__()}")
         self.observers[observer.observer_id] = observer.update
 
     def unsubscribe(self, observer: Observer):
@@ -34,6 +32,4 @@ class Subject(ABC):
             try:
                 observer(*args, **kwargs)
             except Exception as e:
-                log.warning(
-                    f"Caught exception {e=} while dispatching updates. Continuing."
-                )
+                log.warning(f"Caught exception {e=} while dispatching updates. Continuing.")

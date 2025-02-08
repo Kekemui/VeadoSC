@@ -1,4 +1,5 @@
 from abc import ABC
+from pathlib import Path
 
 from loguru import logger as log  # noqa: F401
 
@@ -13,7 +14,7 @@ import gi
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
-from gi.repository import Gtk, Adw  # noqa: E402, F401
+from gi.repository import Gtk, Adw, Gio  # noqa: E402, F401
 
 
 class VeadoGtk:
@@ -28,13 +29,23 @@ class VeadoGtk:
 
         self.expander = Adw.ExpanderRow(title="Veadotube Connection Config")
 
-        self.mode_switch = Adw.SwitchRow(
-            title="Use Smart Connect", subtitle="Default: On"
-        )
+        self.mode_switch = Adw.SwitchRow(title="Use Smart Connect", subtitle="Default: On")
+
+        self.last_selected_dir = str(config.instances_dir.expanduser())
 
         self.instances_expando = Adw.ExpanderRow(title="veadotube Smart Connect Config")
 
-        self.instances_path = Adw.EntryRow(title="veadotube instances directory")
+        self.instances_path = Adw.ActionRow()
+        self.instances_path.set_title("Veadotube Instances directory")
+        self.instances_path.set_subtitle(self.last_selected_dir)
+        self.instances_path.add_css_class("property")
+
+        b = Gtk.Button()
+        b.set_icon_name("folder")
+        b.add_css_class("suggested-action")
+        self.instances_path.add_suffix(b)
+        b.connect("clicked", self.launch_chooser)
+
         self.instances_expando.add_row(self.instances_path)
 
         self.direct_expando = Adw.ExpanderRow(title="veadotube Direct Connect Config")
@@ -51,12 +62,26 @@ class VeadoGtk:
 
         self.update_gtk_model(config, is_connected)
 
+    def launch_chooser(self, *args):
+        dialog = Gtk.FileDialog(title="Select veadotube instances dir", modal=True)
+        dialog.set_initial_folder(Gio.File.parse_name(self.last_selected_dir))
+
+        dialog.select_folder(parent=None, cancellable=None, callback=self.select_callback)
+
+    def select_callback(self, dialog, result):
+        try:
+            selected_file = dialog.select_folder_finish(result)
+            self.last_selected_dir = selected_file.get_path()
+            self.on_gtk_update()
+            log.error(f"{selected_file.get_path()}")
+            log.error(f"{list(Path(self.last_selected_dir).iterdir())}")
+        except gi.repository.GLib.GError:
+            pass
+
     def get_config_rows(self) -> list[Adw.PreferencesRow]:
         return [self.expander]
 
-    def update_gtk_model(
-        self, config: VeadoSCConnectionConfig, is_connected: bool | None = None
-    ):
+    def update_gtk_model(self, config: VeadoSCConnectionConfig, is_connected: bool | None = None):
         self.disconnect_signals()
 
         if is_connected is not None:
@@ -64,22 +89,18 @@ class VeadoGtk:
 
         self.mode_switch.set_active(config.smart_connect)
 
+        self.instances_path.set_subtitle(self.last_selected_dir)
+
         self.instances_expando.set_expanded(config.smart_connect)
         self.instances_expando.set_enable_expansion(config.smart_connect)
-
-        existing_path = self.instances_path.get_text().strip()
-        if existing_path == str(config.instances_dir):
-            log.error("Suppressing update to instances path")
-        else:
-            self.instances_path.set_text(str(config.instances_dir))
 
         self.direct_expando.set_expanded(not config.smart_connect)
         self.direct_expando.set_enable_expansion(not config.smart_connect)
 
         existing_hostname = self.ip_entry.get_text().strip()
         if existing_hostname == config.hostname:
-            log.error("SUppressing update to hostname")
-        else:
+            log.error("Suppressing update to hostname")
+        elif existing_hostname == "":
             self.ip_entry.set_text(config.hostname)
 
         self.port_spinner.set_value(config.port)
@@ -88,7 +109,6 @@ class VeadoGtk:
 
     def connect_signals(self):
         self.mode_switch.connect("notify::active", self.on_gtk_update)
-        self.instances_path.connect("notify::text", self.on_gtk_update)
         self.ip_entry.connect("notify::text", self.on_gtk_update)
         self.port_spinner.connect("notify::value", self.on_gtk_update)
 
@@ -96,7 +116,6 @@ class VeadoGtk:
         try:
             for item in (
                 self.mode_switch,
-                self.instances_path,
                 self.ip_entry,
                 self.port_spinner,
             ):
@@ -106,7 +125,7 @@ class VeadoGtk:
 
     def on_gtk_update(self, *args):
         should_use_smart = self.mode_switch.get_active()
-        path = self.instances_path.get_text().strip()
+        path = self.last_selected_dir
         hostname = self.ip_entry.get_text().strip()
         port = int(self.port_spinner.get_value())
 
@@ -171,10 +190,7 @@ class StateGtk:
         all_states.append("(Other - enter below)")
 
         try:
-            old_states = list(
-                self.states_model[x].get_string()
-                for x in range(0, self.states_model.get_n_items())
-            )
+            old_states = list(self.states_model[x].get_string() for x in range(0, self.states_model.get_n_items()))
         except AttributeError:
             old_states = []
 
@@ -253,12 +269,8 @@ class StateActionBase(VeadoSCActionBase, ABC):
         if not self.on_ready_called:
             return
 
-        self.set_media(
-            image=self.model.get_image_for_state(self.state_id), size=0.75, update=False
-        )
-        self.set_background_color(
-            self.model.get_color_for_state(self.state_id), update=False
-        )
+        self.set_media(image=self.model.get_image_for_state(self.state_id), size=0.75, update=False)
+        self.set_background_color(self.model.get_color_for_state(self.state_id), update=False)
         self.set_bottom_label(self.state_id, update=False)
 
         self.get_input().update()

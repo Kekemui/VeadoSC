@@ -14,7 +14,8 @@ from gg_kekemui_veadosc.messages import (
 )
 from gg_kekemui_veadosc.utils import Subject
 
-from gg_kekemui_veadosc.controller.types import VTInstance
+from gg_kekemui_veadosc.controller.fswatch import VeadoPollingWatchdog
+from gg_kekemui_veadosc.controller.types import ConnectionManager, VTInstance
 
 
 @dataclass
@@ -61,9 +62,7 @@ class VTConnection:
 
     def start_ws_thread(self):
         self.should_terminate.clear()
-        self.thread = threading.Thread(
-            target=self.ws_thread, name="gg_kekemui_veadosc_wst", daemon=True
-        )
+        self.thread = threading.Thread(target=self.ws_thread, name="gg_kekemui_veadosc_wst", daemon=True)
         self.thread.start()
 
     def ws_thread(self):
@@ -72,9 +71,7 @@ class VTConnection:
             host = self.conf.hostname
             port = self.conf.port
             try:
-                self.ws: client.ClientConnection = client.connect(
-                    f"ws://{host}:{port}?n=gg_kekemui_veadosc"
-                )
+                self.ws: client.ClientConnection = client.connect(f"ws://{host}:{port}?n=gg_kekemui_veadosc")
 
                 self.send_request(SubscribeStateEventsRequest())
 
@@ -94,11 +91,13 @@ class VTConnection:
         log.warning("Connection terminated by request")
 
 
-class VeadoController(Subject):
+class VeadoController(Subject, ConnectionManager):
     def __init__(self, plugin_base):
         super().__init__()
         self.frontend = plugin_base
         self._config: VeadoSCConnectionConfig = None
+
+        self._watchdog = VeadoPollingWatchdog(self)
 
         self._conn: VTConnection = None
 
@@ -119,36 +118,31 @@ class VeadoController(Subject):
         return bool(self._conn and self._conn.connected)
 
     def _restart(self):
-        if self._conn:
-            self.terminate_connection(force=True)
+        self._watchdog.stop_poller()
+        self.terminate_connection(force=True)
 
-        if not self.config.smart_connect:
-            instance = VTInstance(
-                veado_id="", hostname=self.config.hostname, port=self.config.port
-            )
+        if self.config.smart_connect:
+            self._watchdog.start_poller(self.config.instances_dir)
+
+        else:
+            instance = VTInstance(veado_id="", hostname=self.config.hostname, port=self.config.port)
             self.propose_connection(instance)
 
     def propose_connection(self, instance: VTInstance):
         if self._conn:
-            log.warning(
-                f"Received request to connect to {instance}, but already talking to {self._conn.conf}"
-            )
+            log.warning(f"Received request to connect to {instance}, but already talking to {self._conn.conf}")
             return
 
         log.info(f"Accepting proposal to connect to {instance}")
         self._conn = VTConnection(self, instance)
 
-    def terminate_connection(
-        self, instance: VTInstance | None = None, force: bool = False
-    ):
+    def terminate_connection(self, instance: VTInstance | None = None, force: bool = False):
         if not self._conn:
             log.info("Nothing to terminate")
             return
 
         if not force and instance != self._conn.conf:
-            log.info(
-                f"Received request to terminate {instance}, but connected to {self._conn.conf}"
-            )
+            log.info(f"Received request to terminate {instance}, but connected to {self._conn.conf}")
             return
 
         log.warning(f"Terminating {self._conn.conf}")

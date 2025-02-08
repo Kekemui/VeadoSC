@@ -18,11 +18,14 @@ class VeadoSCConnectionConfig:
         port: int = 40404,
     ):
         self.smart_connect = smart_connect
-        self.instances_dir = (
-            instances_dir if isinstance(instances_dir, Path) else Path(instances_dir)
-        )
         self.hostname = hostname
         self.port = port
+
+        instances_dir = instances_dir if isinstance(instances_dir, Path) else Path(instances_dir)
+        if instances_dir.exists():
+            self.instances_dir = instances_dir
+        else:
+            self.instances_dir = Path.home() / ".veadotube/instances"
 
     def to_dict(self) -> dict[str, Any]:
         d = {}

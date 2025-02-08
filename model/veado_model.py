@@ -38,12 +38,8 @@ class VeadoModel(Subject, Observer):
 
         self.controller: VeadoController = controller
 
-        self.disconnected_image = get_image_from_path(
-            os.path.join(base_path, "assets", "ix-icons", "disconnected.png")
-        )
-        self.not_found_image = get_image_from_path(
-            os.path.join(base_path, "assets", "ix-icons", "missing-symbol.png")
-        )
+        self.disconnected_image = get_image_from_path(os.path.join(base_path, "assets", "ix-icons", "disconnected.png"))
+        self.not_found_image = get_image_from_path(os.path.join(base_path, "assets", "ix-icons", "missing-symbol.png"))
 
         self.update_map = {
             ListStateEventsResponse: self._list_update,
@@ -123,6 +119,4 @@ class VeadoModel(Subject, Observer):
             self.bootstrap()
 
     def _default_update(self, event: StateEventsResponse):
-        log.warn(
-            f"Received unknown StateEventsResponse type {type(event)}: {event.__repr__()}"
-        )
+        log.warn(f"Received unknown StateEventsResponse type {type(event)}: {event.__repr__()}")

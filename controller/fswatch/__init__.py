@@ -1,1 +1,1 @@
-from .veado_watchdog import VeadoWatchdog
+from .veado_watchdog import VeadoPollingWatchdog

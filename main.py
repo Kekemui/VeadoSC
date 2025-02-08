@@ -23,6 +23,7 @@ from loguru import logger as log  # noqa: F401
 class VeadoSC(PluginBase):
     def __init__(self):
         super().__init__()
+        self.lm = self.locale_manager
 
         self.controller = VeadoController(self)
 
@@ -30,19 +31,19 @@ class VeadoSC(PluginBase):
 
         self._propagate_config(self.conn_conf, force=True)
 
-        for base in [SetState, ToggleState]:
+        for action in [SetState, ToggleState]:
             self.add_action_holder(
                 ActionHolder(
                     plugin_base=self,
-                    action_base=base,
-                    action_id=base.action_id,
-                    action_name=base.action_name,
+                    action_base=action,
+                    action_id=action.action_id,
+                    action_name=self.locale_manager.get(action.action_id),
                 )
             )
 
         # Register plugin
         self.register(
-            plugin_name="VeadoSC",
+            plugin_name=self.lm.get("plugin.name"),
             github_repo="https://github.com/Kekemui/VeadoSC",
             plugin_version="0.0.1",
             app_version="1.5.0-beta.7",

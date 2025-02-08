@@ -8,7 +8,6 @@ from .action_bases import StateActionBase
 class ToggleState(StateActionBase):
 
     action_id = f"{constants.REV_DNS}::ToggleState"
-    action_name = "Toggle State"
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

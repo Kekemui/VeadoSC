@@ -1,0 +1,17 @@
+{
+    "plugin.name": "VeadoSC",
+    "actions.base.gtk.expando.title": "veadotube Connection Config",
+    "actions.base.gtk.mode_switch.title": "Use Smart Connect",
+    "actions.base.gtk.mode_switch.subtitle": "Default: On",
+    "actions.base.gtk.smart_expando.title": "veadotube Smart Connect Config",
+    "actions.base.gtk.instance_path.title": "veadotube Instances directory",
+    "actions.base.gtk.direct_expando.title": "veadotube Direct Connect Config",
+    "actions.base.gtk.ip_entry.title": "veadotube IP Address",
+    "actions.base.gtk.port_spinner.title": "veadotube Static Port",
+    "actions.base.gtk.filedialog.title": "Select veadotube instances directory",
+    "actions.state.gtk.states_row.title": "Available States",
+    "actions.state.gtk.state_id_entry.title": "State Name - Manual Entry",
+    "actions.state.gtk.other.text": "(Other - entry below)",
+    "gg_kekemui_veadosc::SetState": "Set State",
+    "gg_kekemui_veadosc::ToggleState": "Toggle State"
+}

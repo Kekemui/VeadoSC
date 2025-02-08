@@ -8,7 +8,6 @@ from .action_bases import StateActionBase
 class SetState(StateActionBase):
 
     action_id = f"{constants.REV_DNS}::SetState"
-    action_name = "Set State"
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

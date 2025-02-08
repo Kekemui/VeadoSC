@@ -19,25 +19,23 @@ from gi.repository import Gtk, Adw, Gio  # noqa: E402, F401
 
 class VeadoGtk:
 
-    def __init__(
-        self,
-        action: "VeadoSCActionBase",
-        config: VeadoSCConnectionConfig,
-        is_connected: bool,
-    ):
+    def __init__(self, action: "VeadoSCActionBase", config: VeadoSCConnectionConfig, is_connected: bool, lm):
         self.action = action
+        self.lm = lm
 
-        self.expander = Adw.ExpanderRow(title="Veadotube Connection Config")
+        self.expander = Adw.ExpanderRow(title=self.lm.get("actions.base.gtk.expando.title"))
 
-        self.mode_switch = Adw.SwitchRow(title="Use Smart Connect", subtitle="Default: On")
+        self.mode_switch = Adw.SwitchRow(
+            title=self.lm.get("actions.base.gtk.mode_switch.title"),
+            subtitle=self.lm.get("actions.base.gtk.mode_switch.subtitle"),
+        )
 
         self.last_selected_dir = str(config.instances_dir.expanduser())
 
-        self.instances_expando = Adw.ExpanderRow(title="veadotube Smart Connect Config")
+        self.instances_expando = Adw.ExpanderRow(title=self.lm.get("actions.base.gtk.smart_expando.title"))
 
         self.instances_path = Adw.ActionRow()
-        self.instances_path.set_title("Veadotube Instances directory")
-        self.instances_path.set_subtitle(self.last_selected_dir)
+        self.instances_path.set_title(self.lm.get("actions.base.gtk.instance_path.title"))
         self.instances_path.add_css_class("property")
 
         b = Gtk.Button()
@@ -48,10 +46,10 @@ class VeadoGtk:
 
         self.instances_expando.add_row(self.instances_path)
 
-        self.direct_expando = Adw.ExpanderRow(title="veadotube Direct Connect Config")
-        self.ip_entry = Adw.EntryRow(title="Veadotube IP Address")
+        self.direct_expando = Adw.ExpanderRow(title=self.lm.get("actions.base.gtk.direct_expando.title"))
+        self.ip_entry = Adw.EntryRow(title=self.lm.get("actions.base.gtk.ip_entry.title"))
         self.port_spinner = Adw.SpinRow.new_with_range(0, 65535, 1)
-        self.port_spinner.set_title("Veadotube Static Port")
+        self.port_spinner.set_title(self.lm.get("actions.base.gtk.port_spinner.title"))
 
         self.direct_expando.add_row(self.ip_entry)
         self.direct_expando.add_row(self.port_spinner)
@@ -60,10 +58,11 @@ class VeadoGtk:
         self.expander.add_row(self.instances_expando)
         self.expander.add_row(self.direct_expando)
 
-        self.update_gtk_model(config, is_connected)
+        self.set_initial_values(config, is_connected)
+        self.connect_signals()
 
     def launch_chooser(self, *args):
-        dialog = Gtk.FileDialog(title="Select veadotube instances dir", modal=True)
+        dialog = Gtk.FileDialog(title=self.lm.get("actions.base.gtk.filedialog.title"), modal=True)
         dialog.set_initial_folder(Gio.File.parse_name(self.last_selected_dir))
 
         dialog.select_folder(parent=None, cancellable=None, callback=self.select_callback)
@@ -81,47 +80,29 @@ class VeadoGtk:
     def get_config_rows(self) -> list[Adw.PreferencesRow]:
         return [self.expander]
 
-    def update_gtk_model(self, config: VeadoSCConnectionConfig, is_connected: bool | None = None):
-        self.disconnect_signals()
-
-        if is_connected is not None:
-            self.expander.set_expanded(not is_connected)
+    def set_initial_values(self, config: VeadoSCConnectionConfig, is_connected: bool):
+        self.expander.set_expanded(not is_connected)
 
         self.mode_switch.set_active(config.smart_connect)
 
-        self.instances_path.set_subtitle(self.last_selected_dir)
+        self.ip_entry.set_text(config.hostname)
+        self.port_spinner.set_value(config.port)
 
-        self.instances_expando.set_expanded(config.smart_connect)
+        self.update_gtk_model(config)
+
+    def update_gtk_model(self, config: VeadoSCConnectionConfig):
         self.instances_expando.set_enable_expansion(config.smart_connect)
+        self.instances_expando.set_expanded(config.smart_connect)
+
+        self.instances_path.set_subtitle(self.last_selected_dir)
 
         self.direct_expando.set_expanded(not config.smart_connect)
         self.direct_expando.set_enable_expansion(not config.smart_connect)
-
-        existing_hostname = self.ip_entry.get_text().strip()
-        if existing_hostname == config.hostname:
-            log.error("Suppressing update to hostname")
-        elif existing_hostname == "":
-            self.ip_entry.set_text(config.hostname)
-
-        self.port_spinner.set_value(config.port)
-
-        self.connect_signals()
 
     def connect_signals(self):
         self.mode_switch.connect("notify::active", self.on_gtk_update)
         self.ip_entry.connect("notify::text", self.on_gtk_update)
         self.port_spinner.connect("notify::value", self.on_gtk_update)
-
-    def disconnect_signals(self):
-        try:
-            for item in (
-                self.mode_switch,
-                self.ip_entry,
-                self.port_spinner,
-            ):
-                item.disconnect_by_func(self.on_gtk_update)
-        except TypeError:
-            pass
 
     def on_gtk_update(self, *args):
         should_use_smart = self.mode_switch.get_active()
@@ -144,37 +125,29 @@ class VeadoSCActionBase(Observer, ActionBase, ABC):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+        self.lm = self.plugin_base.locale_manager
+
         self.model: VeadoModel = self.plugin_base.model
 
         self.veado_gtk: VeadoGtk | None = None
 
     def get_config_rows(self) -> list[Adw.PreferencesRow]:
         veado_gtk = VeadoGtk(
-            action=self,
-            config=self.plugin_base.conn_conf,
-            is_connected=self.model.connected,
+            action=self, config=self.plugin_base.conn_conf, is_connected=self.model.connected, lm=self.lm
         )
-
-        veado_gtk.ip_entry.connect("notify::text", self.on_gtk_ip_update)
-        veado_gtk.port_spinner.connect("notify::value", self.on_gtk_port_update)
 
         self.veado_gtk = veado_gtk
 
         return self.veado_gtk.get_config_rows()
 
-    # VeadoSC (plugin_base) handles restarting the controller on update here.
-    def on_gtk_ip_update(self, entry, *args):
-        self.plugin_base.veado_ip = entry.get_text().strip()
-
-    def on_gtk_port_update(self, entry, *args):
-        self.plugin_base.veado_port = int(entry.get_value())
-
 
 class StateGtk:
-    def __init__(self, action: "StateActionBase"):
+    def __init__(self, action: "StateActionBase", lm):
         self.parent = action
-        self.states_row = Adw.ComboRow(title="Available States")
-        self.state_id_entry = Adw.EntryRow(title="State Name - Manual Entry")
+        self.lm = lm
+
+        self.states_row = Adw.ComboRow(title=self.lm.get("actions.state.gtk.states_row.title"))
+        self.state_id_entry = Adw.EntryRow(title=self.lm.get("actions.state.gtk.state_id_entry.title"))
         self.update_states()
 
     def get_config_rows(self):
@@ -187,7 +160,7 @@ class StateGtk:
         if connected:
             all_states += self.parent.model.state_list
         all_states.sort()
-        all_states.append("(Other - enter below)")
+        all_states.append(self.lm.get("actions.state.gtk.other.text"))
 
         try:
             old_states = list(self.states_model[x].get_string() for x in range(0, self.states_model.get_n_items()))
@@ -292,5 +265,5 @@ class StateActionBase(VeadoSCActionBase, ABC):
         self.model.unsubscribe(self)
 
     def get_config_rows(self):
-        self.state_gtk = StateGtk(self)
+        self.state_gtk = StateGtk(self, self.lm)
         return super().get_config_rows() + self.state_gtk.get_config_rows()

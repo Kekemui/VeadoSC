@@ -146,76 +146,26 @@ class StateGtk:
         self.parent = action
         self.lm = lm
 
-        self.states_row = Adw.ComboRow(title=self.lm.get("actions.state.gtk.states_row.title"))
         self.state_id_entry = Adw.EntryRow(title=self.lm.get("actions.state.gtk.state_id_entry.title"))
         self.update_states()
 
     def get_config_rows(self):
-        return [self.states_row, self.state_id_entry]
+        return [self.state_id_entry]
 
     def update_states(self):
-        connected = self.parent.model.connected
-
-        all_states: list[str] = []
-        if connected:
-            all_states += self.parent.model.state_list
-        all_states.sort()
-        all_states.append(self.lm.get("actions.state.gtk.other.text"))
-
-        try:
-            old_states = list(self.states_model[x].get_string() for x in range(0, self.states_model.get_n_items()))
-        except AttributeError:
-            old_states = []
-
-        if all_states == old_states:
-            # No changes since the last time we bootstrapped, carry on
-            return
-
-        self.disconnect_signals()
-
-        self.states_model = Gtk.StringList()
-
-        self.states_row.set_selected(Gtk.INVALID_LIST_POSITION)
-        self.states_row.set_model(self.states_model)
-        for state in all_states:
-            self.states_model.append(state)
-
-        state_id = self.parent.state_id
-        if state_id in all_states:
-            self.states_row.set_selected(all_states.index(state_id))
-            self.state_id_entry.set_editable(False)
-        else:
-            self.states_row.set_selected(len(all_states) - 1)
-            self.state_id_entry.set_text(state_id)
-
-        self.connect_signals()
+        self.state_id_entry.set_text(self.parent.state_id)
 
     def on_gtk_update(self, *args):
-        self.disconnect_signals()
-
-        selected_idx = self.states_row.get_selected()
-        is_other_selected = selected_idx == self.states_model.get_n_items() - 1
-
-        if is_other_selected:
-            new_state_id = self.state_id_entry.get_text().strip()
-        else:
-            new_state_id = self.states_model[selected_idx].get_string()
-
-        self.state_id_entry.set_editable(is_other_selected)
         self.parent.state_id = new_state_id
-
-        self.connect_signals()
 
     def disconnect_signals(self):
         try:
-            self.states_row.disconnect_by_func(self.on_gtk_update)
             self.state_id_entry.disconnect_by_func(self.on_gtk_update)
         except TypeError:
             pass
 
     def connect_signals(self):
         self.state_id_entry.connect("notify::text", self.on_gtk_update)
-        self.states_row.connect("notify::selected", self.on_gtk_update)
 
 
 class StateActionBase(VeadoSCActionBase, ABC):
@@ -250,10 +200,6 @@ class StateActionBase(VeadoSCActionBase, ABC):
 
     def update(self, event: ModelEvent):
         super().update(event)
-        try:
-            self.state_gtk.update_states()
-        except AttributeError:
-            pass
 
         self.render()
 

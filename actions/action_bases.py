@@ -154,9 +154,10 @@ class StateGtk:
 
     def update_states(self):
         self.state_id_entry.set_text(self.parent.state_id)
+        self.connect_signals()
 
     def on_gtk_update(self, *args):
-        self.parent.state_id = new_state_id
+        self.parent.state_id = self.state_id_entry.get_text().strip()
 
     def disconnect_signals(self):
         try:

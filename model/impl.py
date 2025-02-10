@@ -4,33 +4,25 @@ import os
 from loguru import logger as log
 from PIL.ImageFile import ImageFile
 
-from ..messages import (
-    ListStateEventsRequest,
-    ListStateEventsResponse,
-    PeekRequest,
-    PeekResponse,
-    StateEventsResponse,
-    ThumbnailRequest,
-    ThumbnailResponse,
-)
-from gg_kekemui_veadosc.utils import (
-    Observer,
-    Subject,
-    get_image_from_b64,
-    get_image_from_path,
-)
-from gg_kekemui_veadosc.controller.veado_controller import (
+from gg_kekemui_veadosc.controller.types import (
     ControllerConnectedEvent,
     VeadoController,
+    ListStateEventsRequest,
+    PeekRequest,
+    ThumbnailRequest,
 )
-from .types import VeadoState
+from gg_kekemui_veadosc.observer import Event
+
+from gg_kekemui_veadosc.model import VeadoState, ThumbnailEvent, ActiveStateEvent, AllStatesEvent
+from gg_kekemui_veadosc.model.abc import VeadoModel
+from gg_kekemui_veadosc.model.utils import get_image_from_b64, get_image_from_path
 
 BG_ACTIVE = [111, 202, 28, 255]
 BG_INACTIVE = [68, 100, 38, 255]
 BG_ERROR = [71, 0, 14, 255]
 
 
-class VeadoModel(Subject, Observer):
+class VeadoModel_(VeadoModel):
     def __init__(self, controller: VeadoController, base_path: str):
         super().__init__()
         self.states: dict[str, VeadoState] = defaultdict(lambda: VeadoState())
@@ -42,9 +34,9 @@ class VeadoModel(Subject, Observer):
         self.not_found_image = get_image_from_path(os.path.join(base_path, "assets", "ix-icons", "missing-symbol.png"))
 
         self.update_map = {
-            ListStateEventsResponse: self._list_update,
-            PeekResponse: self._peek_update,
-            ThumbnailResponse: self._thumb_update,
+            AllStatesEvent: self._list_update,
+            ActiveStateEvent: self._peek_update,
+            ThumbnailEvent: self._thumb_update,
             ControllerConnectedEvent: self._connected_update,
         }
 
@@ -52,10 +44,10 @@ class VeadoModel(Subject, Observer):
         self.connected: bool = controller.connected
         self.bootstrap()
 
-    def update(self, event: StateEventsResponse):
+    def update(self, event: Event):
         update_impl = self.update_map.get(type(event), self._default_update)
         update_impl(event)
-        self.notify()
+        self.notify(event)
 
     @property
     def state_list(self) -> list[str]:
@@ -83,9 +75,9 @@ class VeadoModel(Subject, Observer):
         else:
             return self.not_found_image
 
-    def _list_update(self, event: ListStateEventsResponse):
+    def _list_update(self, event: AllStatesEvent):
         current_keys = set(self.states.keys())
-        for state in event.state_details:
+        for state in event.states:
             if state.state_id in current_keys:
                 current_keys.remove(state.state_id)
             vstate: VeadoState = self.states[state.state_id]
@@ -100,23 +92,23 @@ class VeadoModel(Subject, Observer):
         for key in current_keys:  # Clean up deleted items
             del self.states[key]
 
-    def _peek_update(self, event: PeekResponse):
+    def _peek_update(self, event: ActiveStateEvent):
         for state in self.states.values():
             state.is_active = False
 
-        self.states[event.current_state].is_active = True
-        self.active_state = event.current_state
+        self.states[event.state_id].is_active = True
+        self.active_state = event.state_id
 
-    def _thumb_update(self, event: ThumbnailResponse):
+    def _thumb_update(self, event: ThumbnailEvent):
         state = self.states[event.state_id]
         state.state_id = event.state_id
-        state.thumb_hash = event.hash
-        state.thumbnail = get_image_from_b64(event.png_b64_str)
+        state.thumb_hash = event.thumb_hash
+        state.thumbnail = get_image_from_b64(event.thumb_b64_str)
 
     def _connected_update(self, event: ControllerConnectedEvent):
         self.connected = event.is_connected
         if self.connected:
             self.bootstrap()
 
-    def _default_update(self, event: StateEventsResponse):
-        log.warn(f"Received unknown StateEventsResponse type {type(event)}: {event.__repr__()}")
+    def _default_update(self, event: Event):
+        log.warn(f"Received unknown Event type {event.event_name}: {event.__repr__()}")

@@ -6,8 +6,8 @@ from loguru import logger as log  # noqa: F401
 from src.backend.PluginManager.ActionBase import ActionBase
 
 from gg_kekemui_veadosc.data import VeadoSCConnectionConfig
-from gg_kekemui_veadosc.model import VeadoModel
-from gg_kekemui_veadosc.utils import Observer
+from gg_kekemui_veadosc.model import ModelEvent, VeadoModel
+from gg_kekemui_veadosc.observer import Observer
 
 # Import gtk modules - used for the config rows
 import gi
@@ -248,8 +248,8 @@ class StateActionBase(VeadoSCActionBase, ABC):
 
         self.get_input().update()
 
-    def update(self):
-        super().update()
+    def update(self, event: ModelEvent):
+        super().update(event)
         try:
             self.state_gtk.update_states()
         except AttributeError:

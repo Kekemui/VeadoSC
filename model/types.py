@@ -1,6 +1,12 @@
 from dataclasses import dataclass
+from typing import Optional
 
-from PIL.ImageFile import ImageFile
+
+class StateDetail:
+    def __init__(self, state: dict[str, str]):
+        self.state_id = state["id"]
+        self.state_name = state["name"]
+        self.thumb_hash = state["thumbHash"]
 
 
 @dataclass
@@ -14,5 +20,5 @@ class VeadoState:
     state_id: str | None = None
     state_name: str | None = None
     thumb_hash: str | None = None
-    thumbnail: ImageFile | None = None
+    thumbnail: Optional["PIL.ImageFile.ImageFile"] = None
     is_active: bool = False

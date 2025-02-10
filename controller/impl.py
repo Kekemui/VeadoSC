@@ -1,4 +1,3 @@
-from dataclasses import dataclass
 import threading
 
 from loguru import logger as log
@@ -7,20 +6,16 @@ from websockets.exceptions import InvalidURI, InvalidHandshake, ConnectionClosed
 from websockets.sync import client
 
 from gg_kekemui_veadosc.data import VeadoSCConnectionConfig
-from gg_kekemui_veadosc.messages import (
+
+from gg_kekemui_veadosc.controller.types import (
+    ControllerConnectedEvent,
+    model_event_factory,
     Request,
-    response_factory,
     SubscribeStateEventsRequest,
+    VeadoController,
+    VTInstance,
 )
-from gg_kekemui_veadosc.utils import Subject
-
-from gg_kekemui_veadosc.controller.fswatch import VeadoPollingWatchdog
-from gg_kekemui_veadosc.controller.types import ConnectionManager, VTInstance
-
-
-@dataclass
-class ControllerConnectedEvent:
-    is_connected: bool
+from gg_kekemui_veadosc.controller.watchdog import VeadoPollingWatchdog
 
 
 class VTConnection:
@@ -88,10 +83,10 @@ class VTConnection:
                 self.ws = None
                 self.ctrl.notify(ControllerConnectedEvent(False))
             should_terminate = self.should_terminate.wait(10)
-        log.warning("Connection terminated by request")
+        log.info("Connection terminated by request")
 
 
-class VeadoController(Subject, ConnectionManager):
+class VeadoController_(VeadoController):
     def __init__(self, plugin_base):
         super().__init__()
         self.frontend = plugin_base
@@ -145,27 +140,17 @@ class VeadoController(Subject, ConnectionManager):
             log.info(f"Received request to terminate {instance}, but connected to {self._conn.conf}")
             return
 
-        log.warning(f"Terminating {self._conn.conf}")
+        log.info(f"Terminating {self._conn.conf}")
         self._conn.terminate()
         self._conn = None
 
     def on_recv(self, message):
-        event = response_factory(message)
-        log.info(f"Received event {type(event)}")
+        event = model_event_factory(message)
         if event:
             self.notify(event=event)
 
     def send_request(self, request: Request) -> bool:
-        """
-        Sends a request to veadotube, if connected.
 
-        :param request: The request to send.
-
-        :returns: True if successful, False if not successful (e.g., if not connected
-            to a veadotube instance). It may be more Pythonic to ask
-            forgiveness than to seek permission, but in most cases we don't
-            want to explode callers if we're not connected.
-        """
         try:
             return self._conn.send_request(request)
         except AttributeError:

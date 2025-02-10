@@ -5,6 +5,8 @@ from typing import Any
 
 from loguru import logger as log  # noqa: F401
 
+import gg_kekemui_veadosc.model.events as me
+
 
 class VeadoBase(ABC):
     @classmethod
@@ -58,8 +60,6 @@ class StateEventsResponse(NodesBase, Response, ABC):
 
     @classmethod
     def message_is_valid(cls, data: dict[str, Any]) -> bool:
-        # log.debug(f'Incoming {data=}')
-        # log.debug(f"SER::message_is_valid: {data.get("type") == "stateEvents"}")
         return data.get("type") == "stateEvents"
 
     @classmethod
@@ -69,6 +69,10 @@ class StateEventsResponse(NodesBase, Response, ABC):
             d = json.loads(d)
 
         return d["payload"]
+
+    @abstractmethod
+    def to_model_event(self) -> me.ModelEvent:
+        raise NotImplementedError()
 
 
 class SubscribeStateEventsRequest(StateEventsRequest):
@@ -100,8 +104,6 @@ class ListStateEventsResponse(StateEventsResponse):
             return False
 
         unwrapped = super()._unwrap_response(data)
-        # log.debug(f'{unwrapped}')
-        # log.debug(f'Is valid List? {unwrapped.get("event") == "list"}')
         return unwrapped.get("event") == "list"
 
     def __init__(self, payload):
@@ -110,6 +112,9 @@ class ListStateEventsResponse(StateEventsResponse):
         self.state_details: list[StateDetail] = []
         for state in unwrapped["states"]:
             self.state_details.append(StateDetail(state))
+
+    def to_model_event(self) -> me.AllStatesEvent:
+        return me.AllStatesEvent(states=self.state_details)
 
 
 class PeekRequest(StateEventsRequest):
@@ -129,6 +134,9 @@ class PeekResponse(StateEventsResponse):
     def __init__(self, payload):
         unwrapped = super()._unwrap_response(payload)
         self.current_state = unwrapped["state"]
+
+    def to_model_event(self) -> me.ActiveStateEvent:
+        return me.ActiveStateEvent(state_id=self.current_state)
 
 
 class ThumbnailRequest(StateEventsRequest):
@@ -156,6 +164,9 @@ class ThumbnailResponse(StateEventsResponse):
         self.height = unwrapped["height"]
         self.png_b64_str = unwrapped["png"]
 
+    def to_model_event(self) -> me.ThumbnailEvent:
+        return me.ThumbnailEvent(state_id=self.state_id, thumb_hash=self.hash, thumb_b64_str=self.png_b64_str)
+
 
 class SetActiveStateRequest(StateEventsRequest):
     def __init__(self, state_id: str):
@@ -180,12 +191,10 @@ NODES_RESPONSE_TYPES: list[StateEventsResponse] = [
 ]
 
 
-def response_factory(message: str) -> StateEventsResponse:
+def model_event_factory(message: str) -> me.ModelEvent:
     data = json.loads(Response._unwrap_response(message))
-    # (x for x in event.states if x["state_id"] == self.state_id)
     clazz = next((x for x in NODES_RESPONSE_TYPES if x.message_is_valid(data)), None)
-    # log.debug(f'Detected message type: {clazz}')
     if clazz:
-        return clazz(data)
+        return clazz(data).to_model_event()
     else:
         log.debug(f"Received unknown message {message}")

@@ -7,11 +7,11 @@
     "author": "Kekemui",
     "github": "https://github.com/Kekemui/VeadoSC",
     "descriptions": {
-        "en_US": "Manipulate veadotube avatars via your StreamDeck"
+        "en_US": "Manipulate veadotube avatars via your Stream Deck"
     },
     "short-descriptions": {
-        "en_US": "Manipulate veadotube avatars via your StreamDeck"
+        "en_US": "Manipulate veadotube avatars via your Stream Deck"
     },
-    "tags": ["","",""],
+    "tags": ["veadotube","pngtuber"],
     "minimum-app-version": "1.5.0-beta.7"    
 }

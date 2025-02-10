@@ -1,3 +1,5 @@
+from .abc import VeadoController
+
 from .messages import (
     ListStateEventsRequest,
     ListStateEventsResponse,
@@ -13,5 +15,7 @@ from .messages import (
     ThumbnailRequest,
     ThumbnailResponse,
     UnsubscribeStateEventsRequest,
-    response_factory,
+    model_event_factory,
 )
+
+from .types import ControllerConnectedEvent, VTInstance

@@ -11,11 +11,11 @@ from src.backend.PluginManager.ActionHolder import ActionHolder
 
 # Import actions
 from gg_kekemui_veadosc.actions import SetState, ToggleState
-from gg_kekemui_veadosc.controller.veado_controller import VeadoController
-from gg_kekemui_veadosc.controller.types import VTInstance
+from gg_kekemui_veadosc.controller.impl import VeadoController_
+from gg_kekemui_veadosc.controller.types import Request, VTInstance, VeadoController
 from gg_kekemui_veadosc.data import VeadoSCConnectionConfig
-from gg_kekemui_veadosc.messages import Request
 from gg_kekemui_veadosc.model import VeadoModel
+from gg_kekemui_veadosc.model.impl import VeadoModel_
 
 from loguru import logger as log  # noqa: F401
 
@@ -25,9 +25,9 @@ class VeadoSC(PluginBase):
         super().__init__()
         self.lm = self.locale_manager
 
-        self.controller = VeadoController(self)
+        self.controller: VeadoController = VeadoController_(self)
 
-        self.model: VeadoModel = VeadoModel(self.controller, self.PATH)
+        self.model: VeadoModel = VeadoModel_(self.controller, self.PATH)
 
         self._propagate_config(self.conn_conf, force=True)
 
@@ -53,8 +53,6 @@ class VeadoSC(PluginBase):
         return self.controller.send_request(request)
 
     def propose_connection(self, instance: VTInstance | str):
-        log.trace(f"connection proposed: {instance}")
-        log.trace(f"{type(instance)=}")
         if not isinstance(instance, VTInstance):
             instance = VTInstance.from_json_string(instance)
 

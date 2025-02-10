@@ -6,7 +6,8 @@ import threading
 
 from loguru import logger as log
 
-from gg_kekemui_veadosc.controller.types import ConnectionManager, VTInstance
+from gg_kekemui_veadosc.controller.types import VTInstance
+from .types.abc import ConnectionManager
 
 
 @dataclass
@@ -93,7 +94,6 @@ class VeadoPollingWatchdog:
                         self._update_queue.put(FileEvent(EventType.MODIFIED, file_data.contents))
                     else:
                         if file_data.contents != self._files[path].contents:
-                            log.trace(f"{path} is modified")
                             self._update_queue.put(
                                 FileEvent(
                                     EventType.MODIFIED,
@@ -104,7 +104,6 @@ class VeadoPollingWatchdog:
                         del self._files[path]
 
                 for path, file_data in self._files.items():  # Anything left over was deleted
-                    log.trace(f"{path} was deleted")
                     self._update_queue.put(FileEvent(EventType.DELETED, old_instance=file_data.contents))
 
                 self._files = updated_files

@@ -1,7 +1,10 @@
 from abc import ABC, abstractmethod
 from uuid import uuid4
+import traceback
 
 from loguru import logger as log
+
+from .event import Event
 
 
 class Observer(ABC):
@@ -10,7 +13,7 @@ class Observer(ABC):
         self.observer_id = str(uuid4())
 
     @abstractmethod
-    def update(self, *args, **kwargs):
+    def update(self, event: Event):
         pass
 
 
@@ -20,16 +23,21 @@ class Subject(ABC):
         self.observers: dict[str, callable] = {}
 
     def subscribe(self, observer: Observer):
-        if not hasattr(observer, "observer_id"):
+        if hasattr(observer, "observer_id"):
+            self.observers[observer.observer_id] = observer.update
+        else:
             log.error(f"{observer=} does not have an observer_id. {observer.__repr__()}")
-        self.observers[observer.observer_id] = observer.update
 
     def unsubscribe(self, observer: Observer):
-        del self.observers[observer.observer_id]
+        try:
+            del self.observers[observer.observer_id]
+        except KeyError:
+            pass
 
-    def notify(self, *args, **kwargs):
+    def notify(self, event: Event):
         for observer in list(self.observers.values()):
             try:
-                observer(*args, **kwargs)
+                # TODO - Should we do an instance-wide threadpool here?
+                observer(event)
             except Exception as e:
-                log.warning(f"Caught exception {e=} while dispatching updates. Continuing.")
+                log.warning(f"Caught exception {e=} while dispatching updates. Full details: {traceback.format_exc()}")

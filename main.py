@@ -23,8 +23,7 @@ from gg_kekemui_veadosc.model import VeadoModel
 from gg_kekemui_veadosc.model.impl import VeadoModel_
 from gg_kekemui_veadosc.observer import Event, Subject
 
-
-DEBUG_ENV = "GG_KEKEMUI_VEADOSC_DEBUG"
+DEBUG_ENV = "VEADOSC_DEBUG"
 
 
 class VeadoSC(Subject, PluginBase):
@@ -35,7 +34,8 @@ class VeadoSC(Subject, PluginBase):
         debug_mode = DEBUG_ENV in os.environ
 
         backend_path = os.path.join(self.PATH, "backend", "backend.py")
-        self.launch_backend(backend_path=backend_path, open_in_terminal=debug_mode)
+        backend_venv = os.path.join(self.PATH, "backend", ".venv")
+        self.launch_backend(backend_path=backend_path, venv_path=backend_venv, open_in_terminal=debug_mode)
 
         # The backend doesn't always launch within the 0.3 seconds afforded by
         # PluginBase. Give ourselves a bit more time.

@@ -1,6 +1,6 @@
+import traceback
 from abc import ABC, abstractmethod
 from uuid import uuid4
-import traceback
 
 from loguru import logger as log
 

@@ -1,33 +1,56 @@
 # Set path so we can use absolute import paths
-from pathlib import Path
 import sys
+from pathlib import Path
 
 ABSOLUTE_PLUGIN_PATH = str(Path(__file__).parent.parent.absolute())
 sys.path.insert(0, ABSOLUTE_PLUGIN_PATH)
 
+import os
+
+from loguru import logger as log  # noqa: F401
+from src.backend.DeckManagement.InputIdentifier import Input
+from src.backend.PluginManager.ActionHolder import ActionHolder
+from src.backend.PluginManager.ActionInputSupport import ActionInputSupport
+
 # Import StreamController modules
 from src.backend.PluginManager.PluginBase import PluginBase
-from src.backend.PluginManager.ActionHolder import ActionHolder
 
 # Import actions
 from gg_kekemui_veadosc.actions import SetState, ToggleState
-from gg_kekemui_veadosc.controller.impl import VeadoController_
-from gg_kekemui_veadosc.controller.types import Request, VTInstance, VeadoController
+from gg_kekemui_veadosc.controller.types import Request, VeadoController, VTInstance
 from gg_kekemui_veadosc.data import VeadoSCConnectionConfig
 from gg_kekemui_veadosc.model import VeadoModel
 from gg_kekemui_veadosc.model.impl import VeadoModel_
+from gg_kekemui_veadosc.observer import Event, Subject
 
-from loguru import logger as log  # noqa: F401
+DEBUG_ENV = "VEADOSC_DEBUG"
 
 
-class VeadoSC(PluginBase):
-    def __init__(self):
-        super().__init__()
+class VeadoSC(Subject, PluginBase):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.lm = self.locale_manager
 
-        self.controller: VeadoController = VeadoController_(self)
+        debug_mode = DEBUG_ENV in os.environ
 
-        self.model: VeadoModel = VeadoModel_(self.controller, self.PATH)
+        backend_path = os.path.join(self.PATH, "backend", "backend.py")
+        backend_venv = os.path.join(self.PATH, "backend", ".venv")
+        self.launch_backend(backend_path=backend_path, venv_path=backend_venv, open_in_terminal=debug_mode)
+
+        # The backend doesn't always launch within the 0.3 seconds afforded by
+        # PluginBase. Give ourselves a bit more time.
+        for i in range(10):
+            if not self.backend_connection:
+                self.wait_for_backend(10)
+            else:
+                break
+
+        if not self.backend_connection:
+            raise ValueError("Backend failed to launch after 10 seconds")
+
+        self.controller: VeadoController = self.backend.get_controller()
+
+        self.model: VeadoModel = VeadoModel_(self, self.controller, self.PATH)
 
         self._propagate_config(self.conn_conf, force=True)
 
@@ -38,6 +61,11 @@ class VeadoSC(PluginBase):
                     action_base=action,
                     action_id=action.action_id,
                     action_name=self.locale_manager.get(action.action_id),
+                    action_support={
+                        Input.Key: ActionInputSupport.SUPPORTED,
+                        Input.Dial: ActionInputSupport.UNTESTED,
+                        Input.Touchscreen: ActionInputSupport.UNTESTED,
+                    },
                 )
             )
 
@@ -48,6 +76,15 @@ class VeadoSC(PluginBase):
             plugin_version="1.0.0",
             app_version="1.5.0-beta.7",
         )
+
+    def update(self, event: Event):
+        """
+        Provides proxying of events from the VeadoSC backend into this frontend.
+        Should conform to the interface of `gg_kekemui_veadosc.observer.Observer`.
+
+        See ADR-01 for why this exists.
+        """
+        self.notify(event)
 
     def send_request(self, request: Request) -> bool:
         return self.controller.send_request(request)
@@ -76,8 +113,8 @@ class VeadoSC(PluginBase):
         settings["connection"] = value.to_dict()
         self.set_settings(settings)
 
-        if old != value:  # dirty
+        if old != value:  # config is dirty
             self._propagate_config(value)
 
     def _propagate_config(self, value: VeadoSCConnectionConfig, force: bool = False):
-        self.controller.config = value
+        self.controller.set_config(value)

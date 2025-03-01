@@ -20,5 +20,5 @@ class VeadoState:
     state_id: str | None = None
     state_name: str | None = None
     thumb_hash: str | None = None
-    thumbnail: Optional["PIL.ImageFile.ImageFile"] = None
+    thumbnail: Optional["PIL.ImageFile.ImageFile"] = None  # noqa: F821
     is_active: bool = False

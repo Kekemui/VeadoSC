@@ -1,21 +1,25 @@
-from collections import defaultdict
 import os
+from collections import defaultdict
 
 from loguru import logger as log
 from PIL.ImageFile import ImageFile
 
 from gg_kekemui_veadosc.controller.types import (
     ControllerConnectedEvent,
-    VeadoController,
     ListStateEventsRequest,
     PeekRequest,
     ThumbnailRequest,
+    VeadoController,
 )
-from gg_kekemui_veadosc.observer import Event
-
-from gg_kekemui_veadosc.model import VeadoState, ThumbnailEvent, ActiveStateEvent, AllStatesEvent
+from gg_kekemui_veadosc.model import (
+    ActiveStateEvent,
+    AllStatesEvent,
+    ThumbnailEvent,
+    VeadoState,
+)
 from gg_kekemui_veadosc.model.abc import VeadoModel
 from gg_kekemui_veadosc.model.utils import get_image_from_b64, get_image_from_path
+from gg_kekemui_veadosc.observer import Event
 
 BG_ACTIVE = [111, 202, 28, 255]
 BG_INACTIVE = [68, 100, 38, 255]
@@ -23,7 +27,7 @@ BG_ERROR = [71, 0, 14, 255]
 
 
 class VeadoModel_(VeadoModel):
-    def __init__(self, controller: VeadoController, base_path: str):
+    def __init__(self, frontend, controller: VeadoController, base_path: str):
         super().__init__()
         self.states: dict[str, VeadoState] = defaultdict(lambda: VeadoState())
         self.active_state: str = ""
@@ -40,12 +44,18 @@ class VeadoModel_(VeadoModel):
             ControllerConnectedEvent: self._connected_update,
         }
 
-        self.controller.subscribe(self)
+        # Use the frontend's proxied events
+        frontend.subscribe(self)
         self.connected: bool = controller.connected
         self.bootstrap()
 
     def update(self, event: Event):
-        update_impl = self.update_map.get(type(event), self._default_update)
+        update_impl = self._default_update
+        for event_type, handler in self.update_map.items():
+            if isinstance(event, event_type):
+                update_impl = handler
+                break
+
         update_impl(event)
         self.notify(event)
 
@@ -111,4 +121,4 @@ class VeadoModel_(VeadoModel):
             self.bootstrap()
 
     def _default_update(self, event: Event):
-        log.warn(f"Received unknown Event type {event.event_name}: {event.__repr__()}")
+        log.warning(f"Received unknown Event type {event.event_name}: {event.__repr__()}")

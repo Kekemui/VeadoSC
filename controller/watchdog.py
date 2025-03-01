@@ -1,13 +1,13 @@
+import threading
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from queue import SimpleQueue, Empty
-import threading
+from queue import Empty, SimpleQueue
 
 from loguru import logger as log
 
 from gg_kekemui_veadosc.controller.types import VTInstance
-from .types.abc import ConnectionManager
+from gg_kekemui_veadosc.controller.types.abc import ConnectionManager
 
 
 @dataclass
@@ -54,15 +54,16 @@ class VeadoPollingWatchdog:
             log.warning("VeadoPollingWatchdog::start_poller called with None watch_dir")
             return
 
-        dir_str = str(watch_dir)
+        self.stop_poller()
+
+        dir_str = str(watch_dir.absolute())
         if not dir_str.endswith("instances") and not dir_str.endswith("instances/"):
             log.warning(f"Watchdog configured with path {dir_str} that does not end with `instances`. Ignoring.")
             return
 
-        self.stop_poller()
-
         self._stop_fs_thread.clear()
-        self._watch_dir = watch_dir
+        # RPyC seems to hang if we keep the object/Path reference around.
+        self._watch_dir = dir_str
         self._fs_thread = threading.Thread(target=self._fs_poller, name=FS_THREAD_NAME, daemon=True)
         self._fs_thread.start()
 
@@ -75,13 +76,15 @@ class VeadoPollingWatchdog:
         self._watch_dir = None
 
     def _fs_poller(self):
-        log.info(f"FS Poller started, monitoring {str(self._watch_dir.absolute())}")
+        log.info(f"FS Poller started, monitoring {str(self._watch_dir)}")
 
+        # Rematerialize as our own object.
+        watch_dir = Path(self._watch_dir)
         should_continue = True
         while should_continue:
             try:
                 updated_files: dict[str, FileData] = {}
-                for f in self._watch_dir.iterdir():
+                for f in watch_dir.iterdir():
                     instance = VTInstance.from_path(f)
                     if not instance:
                         continue

@@ -1,9 +1,8 @@
 from loguru import logger as log  # noqa: F401
 
+from gg_kekemui_veadosc.actions.action_bases import StateActionBase
 from gg_kekemui_veadosc.constants import REV_DNS
 from gg_kekemui_veadosc.controller.types import ToggleStateRequest
-
-from gg_kekemui_veadosc.actions.action_bases import StateActionBase
 
 
 class ToggleState(StateActionBase):

@@ -1,21 +1,19 @@
 import threading
 
 from loguru import logger as log
-
-from websockets.exceptions import InvalidURI, InvalidHandshake, ConnectionClosed
+from websockets.exceptions import ConnectionClosed, InvalidHandshake, InvalidURI
 from websockets.sync import client
-
-from gg_kekemui_veadosc.data import VeadoSCConnectionConfig
 
 from gg_kekemui_veadosc.controller.types import (
     ControllerConnectedEvent,
-    model_event_factory,
     Request,
     SubscribeStateEventsRequest,
     VeadoController,
     VTInstance,
+    model_event_factory,
 )
 from gg_kekemui_veadosc.controller.watchdog import VeadoPollingWatchdog
+from gg_kekemui_veadosc.data import VeadoSCConnectionConfig
 
 
 class VTConnection:
@@ -100,8 +98,7 @@ class VeadoController_(VeadoController):
     def config(self) -> VeadoSCConnectionConfig:
         return self._config
 
-    @config.setter
-    def config(self, value):
+    def set_config(self, value):
         if self._config == value:
             return
 
@@ -155,3 +152,12 @@ class VeadoController_(VeadoController):
             return self._conn.send_request(request)
         except AttributeError:
             return False
+
+    def notify(self, *args, **kwargs):
+        """
+        Proxies events from this backend into the VeadoSC frontend.
+        Should conform to the interface of `gg_kekemui_veadosc.observer.Subject`.
+
+        See ADR-01 for why this exists.
+        """
+        self.frontend.update(*args, **kwargs)

@@ -1,0 +1,4 @@
+loguru==0.7.2
+rpyc>=6.0.0
+streamcontroller-plugin-tools>=2.0.2
+websockets>=15

@@ -1,2 +1,2 @@
 from .event import Event
-from .observer import Subject, Observer
+from .observer import Observer, Subject

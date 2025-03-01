@@ -1,5 +1,6 @@
 from base64 import b64decode
 from io import BytesIO
+
 from PIL import Image, ImageFile
 
 

@@ -15,5 +15,5 @@ class VeadoModel(Subject, Observer, ABC):
         pass
 
     @abstractmethod
-    def get_image_for_state(self, state_id: str) -> "PIL.ImageFile.ImageFile":
+    def get_image_for_state(self, state_id: str) -> "PIL.ImageFile.ImageFile":  # noqa: F821
         pass

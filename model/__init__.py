@@ -1,3 +1,3 @@
-from .events import ModelEvent, ThumbnailEvent, ActiveStateEvent, AllStatesEvent
-from .types import VeadoState
 from .abc import VeadoModel
+from .events import ActiveStateEvent, AllStatesEvent, ModelEvent, ThumbnailEvent
+from .types import VeadoState

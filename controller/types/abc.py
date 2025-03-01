@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 
 from gg_kekemui_veadosc.data import VeadoSCConnectionConfig
-from gg_kekemui_veadosc.observer import Subject
+
 from .messages import Request
 from .types import VTInstance
 
@@ -20,7 +20,7 @@ class ConnectionManager(ABC):
         pass
 
 
-class VeadoController(Subject, ConnectionManager, ABC):
+class VeadoController(ConnectionManager, ABC):
 
     @property
     @abstractmethod

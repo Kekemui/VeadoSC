@@ -4,13 +4,10 @@ from dataclasses import dataclass
 from gg_kekemui_veadosc.model.types import StateDetail
 from gg_kekemui_veadosc.observer import Event
 
+BASE_EVENT_NAME = "model."
 
 class ModelEvent(Event, ABC):
-    @property
-    @abstractmethod
-    def event_name(self):
-        return "model."
-
+    pass
 
 @dataclass
 class ThumbnailEvent(ModelEvent):
@@ -18,24 +15,18 @@ class ThumbnailEvent(ModelEvent):
     thumb_hash: str
     thumb_b64_str: str
 
-    @property
-    def event_name(self):
-        return super().event_name() + "ThumbnailEvent"
+    event_name = BASE_EVENT_NAME + "ThumbnailEvent"
 
 
 @dataclass
 class ActiveStateEvent(ModelEvent):
     state_id: str
 
-    @property
-    def event_name(self):
-        return super().event_name() + "ActiveStateEvent"
+    event_name = BASE_EVENT_NAME + "ActiveStateEvent"
 
 
 @dataclass
 class AllStatesEvent(ModelEvent):
     states: list[StateDetail]
 
-    @property
-    def event_name(self):
-        return super().event_name() + "AllStatesEvent"
+    event_name = BASE_EVENT_NAME + "AllStatesEvent"

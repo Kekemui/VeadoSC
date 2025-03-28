@@ -4,6 +4,9 @@ from pathlib import Path
 # Import gtk modules - used for the config rows
 import gi
 from loguru import logger as log  # noqa: F401
+
+from GtkHelper.ComboRow import ComboRowItem
+from GtkHelper.GenerativeUI.ComboRow import ComboRow
 from src.backend.PluginManager.ActionBase import ActionBase, ActionCore
 
 from gg_kekemui_veadosc.data import VeadoSCConnectionConfig
@@ -145,10 +148,28 @@ class StateGtk:
         self.lm = lm
 
         self.state_id_entry = Adw.EntryRow(title=self.lm.get("actions.state.gtk.state_id_entry.title"))
+
+        self.state_combo = ComboRow(
+            action_core=self.parent,
+            items = [],
+            title = self.lm.get("actions.state.gtk.states_row.title"),
+            default_value="",
+            on_change= self.gen_combo_update,
+            enable_search=True,
+            auto_add=False,
+            can_reset=False,
+            # var_name="state_id"
+            var_name="zzz_state_combo_unused"
+        )
         self.update_states()
+        self.update_states_combo()
+
+    def gen_combo_update(self, _, selected_item: ComboRowItem, *args, **kwargs):
+        log.debug(f"{selected_item.get_value()}")
+        log.debug(f"{self.parent.zzz_state_combo_unused}")
 
     def get_config_rows(self):
-        return [self.state_id_entry]
+        return [self.state_id_entry, self.state_combo._widget]
 
     def update_states(self):
         self.state_id_entry.set_text(self.parent.state_id)
@@ -167,10 +188,39 @@ class StateGtk:
         self.state_id_entry.connect("notify::text", self.on_gtk_update)
 
 
+    def update_states_combo(self):
+        connected = self.parent.model.connected
+        other = self.lm.get("actions.state.gtk.other.text")
+
+        all_states: list[str] = []
+        if connected:
+            all_states += self.parent.model.state_list
+
+        all_states.sort()
+        all_states.append(other)
+
+        # try:
+        #     old_states = list(self.state_combo.get_item_at[x].get_value() for x in range(0, self.states_model.get_n_items()))
+        # except AttributeError:
+        #     old_states = []
+
+
+        # if all_states == old_states:
+        #     # No changes since the last time we bootstrapped, carry on
+        #     return
+
+        state_id = self.parent.state_id
+
+        selected = state_id if state_id in all_states else other
+        log.debug(f"{all_states=}, {selected=}")
+        self.state_combo.populate(items=all_states, selected_item=selected, trigger_callback=False)
+
+
 class StateActionBase(VeadoSCActionBase, ABC):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.zzz_state_combo_unused = "foo"
 
     @property
     def state_id(self) -> str:
@@ -199,6 +249,12 @@ class StateActionBase(VeadoSCActionBase, ABC):
 
     def update(self, event: ModelEvent):
         super().update(event)
+
+        try:
+            if "model.AllStatesEvent" == event.event_name:
+                self.state_gtk.update_states_combo()
+        except AttributeError:
+            pass
 
         self.render()
 

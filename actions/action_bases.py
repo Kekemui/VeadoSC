@@ -4,7 +4,7 @@ from pathlib import Path
 # Import gtk modules - used for the config rows
 import gi
 from loguru import logger as log  # noqa: F401
-from src.backend.PluginManager.ActionBase import ActionBase
+from src.backend.PluginManager.ActionBase import ActionBase, ActionCore
 
 from gg_kekemui_veadosc.data import VeadoSCConnectionConfig
 from gg_kekemui_veadosc.model import ModelEvent, VeadoModel
@@ -119,7 +119,7 @@ class VeadoGtk:
         self.update_gtk_model(config)
 
 
-class VeadoSCActionBase(Observer, ActionBase, ABC):
+class VeadoSCActionBase(Observer, ActionCore, ABC):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 

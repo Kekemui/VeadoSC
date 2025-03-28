@@ -1,5 +1,8 @@
 from loguru import logger as log  # noqa: F401
 
+from src.backend.PluginManager.EventAssigner import EventAssigner
+from src.backend.DeckManagement.InputIdentifier import Input, InputEvent
+
 from gg_kekemui_veadosc.actions.action_bases import StateActionBase
 from gg_kekemui_veadosc.constants import REV_DNS
 from gg_kekemui_veadosc.controller.types import ToggleStateRequest
@@ -12,11 +15,19 @@ class ToggleState(StateActionBase):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    def on_key_down(self):
-        self.toggle()
+        self.add_event_assigner(EventAssigner(
+            id="Temp Enable State",
+            ui_label="Temporarily Enable State",
+            default_event=Input.Key.Events.DOWN,
+            callback=lambda _: self.toggle()
+        ))
 
-    def on_key_up(self):
-        self.toggle()
+        self.add_event_assigner(EventAssigner(
+            id="Revert to Prev State",
+            ui_label="Revert to Previous State",
+            default_event=Input.Key.Events.UP,
+            callback=lambda _: self.toggle()
+        ))
 
     def toggle(self):
         success = self.plugin_base.send_request(ToggleStateRequest(self.state_id))
